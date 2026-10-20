@@ -1,0 +1,16 @@
+# Normaliza finais de linha no repositório (evita ruído CRLF/LF entre Windows/Linux).
+* text=auto eol=lf
+
+# Binários (não normalizar)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary
+
+# Arquivos que devem permanecer com CRLF no Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Lockfile: tratado como texto normal
+package-lock.json text

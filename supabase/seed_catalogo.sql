@@ -1,0 +1,320 @@
+-- Moriarty — seed do catálogo para Supabase/Postgres (gerado automaticamente).
+-- Idempotente: on conflict do nothing / do update. Rode no SQL Editor do Supabase.
+begin;
+
+-- Coleção: PMDF — Oficial / Curso de Formação de Oficiais (CFO)
+insert into catalog_collections (id, slug, title, discipline_label, summary, status, status_note, source_name, source_url, edital_ref, checked_at) values ('catalog:pmdf-cfo', 'pmdf-cfo', 'PMDF — Oficial / Curso de Formação de Oficiais (CFO)', 'Concursos', 'Trilha de preparação para o ingresso como Oficial Policial Militar (2º Tenente) da Polícia Militar do Distrito Federal, via Curso de Formação de Oficiais.', 'historico', 'Baseado no Edital nº 03/2025 – DGP/PMDF, de 31/01/2025 (referência histórica; certame suspenso e retomado ao longo de 2025/2026, com retificações posteriores). Confirme sempre o edital vigente na página do Cebraspe antes da prova.', 'PMDF — Edital nº 03/2025 – DGP/PMDF, de 31/01/2025 (CFO, Cebraspe)', 'https://www.cebraspe.org.br/concursos/pm_df_25_cfo', 'Edital nº 03/2025 – DGP/PMDF (CFO)', '2026-10-20')
+on conflict (slug) do update set title = excluded.title, summary = excluded.summary, status = excluded.status, status_note = excluded.status_note, source_name = excluded.source_name, source_url = excluded.source_url, edital_ref = excluded.edital_ref, checked_at = excluded.checked_at, updated_at = now();
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:area:0', 'catalog:pmdf-cfo', 'area', 'resumo_proprio', 'Língua Portuguesa', '', null, null, '', '', 'Matéria da trilha', '', 0)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:area:1', 'catalog:pmdf-cfo', 'area', 'resumo_proprio', 'Raciocínio Lógico e Matemático', '', null, null, '', '', 'Matéria da trilha', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:area:2', 'catalog:pmdf-cfo', 'area', 'resumo_proprio', 'Noções de Direito (Constitucional, Administrativo e Penal)', '', null, null, '', '', 'Matéria da trilha', '', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:area:3', 'catalog:pmdf-cfo', 'area', 'resumo_proprio', 'História e Geografia do Distrito Federal', '', null, null, '', '', 'Matéria da trilha', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:area:4', 'catalog:pmdf-cfo', 'area', 'resumo_proprio', 'Atualidades e Legislação Aplicada à PMDF', '', null, null, '', '', 'Matéria da trilha', '', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:1', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Como estudar o CFO da PMDF', 'A seleção do CFO combina provas objetivas e discursiva, além de fases eliminatórias (aptidão física, exames médicos, avaliação psicológica e sindicância de vida pregressa/investigação social).
+
+Estratégia inicial sugerida: (1) domine Português e Raciocínio Lógico, que sustentam a nota objetiva; (2) construa base sólida de Direito Constitucional (princípios do art. 37 e direitos do art. 5º); (3) trate a história e geografia do DF como matéria de memorização ativa com revisão espaçada; (4) treine a redação/discursiva semanalmente.
+
+Este material é introdutório e autoral; não substitui o edital oficial.', null, null, '', '', 'Orientação de estudo (conteúdo comum de preparação)', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:2', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Nota — Língua Portuguesa: coesão e coerência', 'Coesão é a amarração formal entre partes do texto (conectivos, pronomes, repetições controladas). Coerência é a relação lógica de sentido com o contexto.
+
+Principais conectivos: adição (além disso, outrossim), oposição (porém, todavia, contudo), causa (porque, visto que), conclusão (portanto, logo), explicação (isto é, ou seja).
+
+Erro comum de prova: confundir "mas" (oposição) com "mais" (quantidade) e "há" (tempo passado/existir) com "a" (distância/futuro do presente). Verifique sempre a função na frase.', null, null, '', '', 'Conteúdo comum de preparação', '', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:3', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Nota — Raciocínio Lógico: proposições e conectivos', 'Proposição é sentença à qual se pode atribuir verdadeiro (V) ou falso (F). Conectivos principais:
+
+- Conjunção (p ∧ q): V só quando ambos V.
+- Disjunção (p ∨ q): F só quando ambos F.
+- Condicional (p → q): F só quando p=V e q=F ("o antecedente verdadeiro com consequente falso").
+- Bicondicional (p ↔ q): V quando ambos têm o mesmo valor.
+
+Equivalência da condicional: p → q equivale a ¬q → ¬p (contrapositiva) e a ¬p ∨ q.
+
+Erro comum: negar uma condicional como se fosse outra condicional. A negação de p → q é p ∧ ¬q.', null, null, '', '', 'Conteúdo comum de preparação', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:4', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Nota — Direito Constitucional: princípios do art. 37', 'O art. 37 fixa os princípios expressos da administração pública: legalidade, impessoalidade, moralidade, publicidade e eficiência (LIMPE).
+
+- Legalidade (para a Administração): só pode agir conforme a lei.
+- Impessoidade: sem favorecimento pessoal.
+- Moralidade: exige ética e boa-fé administrativa.
+- Publicidade: transparência, com exceções legais (segurança do Estado/sociedade).
+- Eficiência: incluir pela EC 19/1998.
+
+Ponto de prova: o rol é exemplificativo? Não — estes cinco são os expressos no caput; há outros princípios implícitos no ordenamento.', null, null, '', '', 'Constituição Federal de 1988, art. 37', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:5', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Nota — História e Geografia do DF: noções introdutórias', 'O Distrito Federal foi criado pela Constituição de 1891 e implantado em 1960 com a inauguração de Brasília. Não é estado nem município: é uma unidade federativa com competências híbridas (Lei Orgânica no lugar de Constituição estadual).
+
+Aspectos frequentemente cobrados: Plano Piloto e o tombamento como Patrimônio Cultural da Humanidade (UNESCO, 1987); Regiões Administrativas; limites com Goiás e Minas Gerais; clima tropical com estação seca no inverno.
+
+Dica de revisão: use mapa e linha do tempo; memorize marcos (1891, 1956 início da construção, 1960 inauguração, 1987 tombamento).', null, null, '', '', 'Conteúdo comum de preparação', '', 5)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:flashcard:20', 'catalog:pmdf-cfo', 'flashcard', 'flashcard', 'Flashcard — Níveis de análise da segurança pública (art. 144)', 'Frente: Segundo o art. 144 da CF/88, a segurança pública é dever de quem, além de direito e responsabilidade de quem?
+
+Verso: É dever do Estado e direito e responsabilidade de todos.', null, null, '', '', 'Constituição Federal de 1988, art. 144', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 20)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:flashcard:21', 'catalog:pmdf-cfo', 'flashcard', 'flashcard', 'Flashcard — Princípios expressos do art. 37', 'Frente: Cite os cinco princípios expressos da administração pública no art. 37 da CF/88.
+
+Verso: Legalidade, impessoalidade, moralidade, publicidade e eficiência (LIMPE).', null, null, '', '', 'Constituição Federal de 1988, art. 37', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 21)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:flashcard:22', 'catalog:pmdf-cfo', 'flashcard', 'flashcard', 'Flashcard — Negação da condicional', 'Frente: Qual é a negação lógica da proposição p → q?
+
+Verso: p ∧ ¬q (o antecedente verdadeiro e o consequente falso).', null, null, '', '', 'Raciocínio lógico (conteúdo comum)', '', 22)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:flashcard:23', 'catalog:pmdf-cfo', 'flashcard', 'flashcard', 'Flashcard — Distrito Federal é estado ou município?', 'Frente: O Distrito Federal é um estado ou um município?
+
+Verso: Nem um nem outro: é uma unidade federativa com competências híbridas, regida por Lei Orgânica.', null, null, '', '', 'Conteúdo comum de preparação', '', 23)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:flashcard:24', 'catalog:pmdf-cfo', 'flashcard', 'flashcard', 'Flashcard — Coesão x coerência', 'Frente: Qual a diferença entre coesão e coerência textual?
+
+Verso: Coesão é a ligação formal (conectivos/pronomes ordenando as partes); coerência é a relação lógica de sentido com o contexto.', null, null, '', '', 'Língua Portuguesa (conteúdo comum)', '', 24)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:100', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-01', 'Sobre os princípios expressos da administração pública no art. 37 da CF/88, assinale a alternativa correta.', '["São apenas legalidade e impessoalidade.","São: legalidade, impessoalidade, moralidade, publicidade e eficiência.","A eficiência não consta do texto constitucional.","O rol é taxativo e impede outros princípios.","A moralidade foi revogada pela EC 19/1998."]', 1, 'O caput do art. 37 lista os cinco princípios expressos (LIMPE). A eficiência foi incluída pela EC 19/1998; o rol não impede princípios implícitos.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 100)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:101', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-02', 'A negação lógica da proposição "Se estudo, então sou aprovado" é:', '["Se não estudo, então não sou aprovado.","Se sou aprovado, então estudo.","Estudo e não sou aprovado.","Não estudo e sou aprovado.","Estudo ou sou aprovado."]', 2, 'A negação da condicional p → q é p ∧ ¬q: "Estudo E não sou aprovado". A alternativa ''a'' é a inversa (não equivalente) e a ''b'' é a recíproca.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 101)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:102', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-03', 'Segundo o art. 144 da Constituição Federal de 1988, a segurança pública é:', '["responsabilidade exclusiva da União.","dever do Estado, direito e responsabilidade de todos.","atribuição apenas das polícias militares.","matéria infraconstitucional, sem previsão na CF.","competência exclusiva do Distrito Federal."]', 1, 'O caput do art. 144 afirma que a segurança pública é dever do Estado, direito e responsabilidade de todos, exercida pelos órgãos ali listados.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 102)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:103', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-04', 'O Distrito Federal, no plano político-administrativo, é:', '["um município com prefeito e câmara.","um estado federado com Constituição própria.","uma unidade federativa regida por Lei Orgânica, sem subdivisão municipal.","um território federal administrado pela União.","parte integrante do estado de Goiás."]', 2, 'O DF não é estado nem município: é unidade federativa regida por Lei Orgânica, com competências legislativas híbridas.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 103)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:104', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-05', 'Assinale a alternativa em que há ERRO no uso dos conectivos/ortografia.', '["Estudei muito, portanto fui aprovado.","Quero mais tempo, mas o edital é curto.","Há dois anos ele estuda para o concurso.","Ele estuda mas cedo do que eu.","Não fui à prova porque adoeci."]', 3, 'Em ''mais cedo'' deve-se usar o advérbio ''mais''. ''Mas'' é conjunção adversativa; ''mas cedo'' está incorreto.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 104)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:105', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-06', 'Em relação à condicional (p → q), é correto afirmar que ela é falsa:', '["somente quando p é falso e q é verdadeiro.","somente quando p é verdadeiro e q é falso.","somente quando ambos são verdadeiros.","somente quando ambos são falsos.","em nenhuma hipótese."]', 1, 'A condicional só é falsa no caso V → F, ou seja, antecedente verdadeiro e consequente falso.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 105)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:106', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-07', 'Sobre a prova discursiva e as fases do CFO da PMDF, é correto dizer que:', '["há apenas prova objetiva.","a investigação social não existe em concurso de carreira policial.","há fases eliminatórias como aptidão física, exames médicos, avaliação psicológica e sindicância de vida pregressa.","a discursiva é classificatória, mas não eliminatória.","o curso de formação não integra o concurso."]', 2, 'O concurso do CFO inclui fases eliminatórias (TAF, exames médicos, avaliação psicológica) e sindicância de vida pregressa/investigação social, além de objetiva e discursiva.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 106)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:107', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-08', 'A coerência textual diz respeito a:', '["ao uso exclusivo de conectivos.","à relação lógica de sentido entre as partes e o contexto.","apenas à correção ortográfica.","ao número de parágrafos.","à pontuação isolada."]', 1, 'Coerência é a relação lógica de sentido; coesão é a ligação formal (conectivos, pronomes).', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 107)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:108', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-09', 'O tombamento de Brasília como Patrimônio Cultural da Humanidade ocorreu em:', '["1960","1987","1891","2000","1975"]', 1, 'A UNESCO reconheceu o Plano Piloto como Patrimônio Cultural da Humanidade em 1987.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 108)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:questao:109', 'catalog:pmdf-cfo', 'questao', 'questao_autoral', 'Questão autoral PMDF-10', 'Sobre cláusulas pétreas (art. 60, § 4º), os direitos e garantias individuais do art. 5º:', '["podem ser abolidos por emenda constitucional.","não integram as cláusulas pétreas.","não podem ser abolidos por emenda tendente a aboli-los.","foram revogados pela EC 45/2004.","dependem de lei complementar para valer."]', 2, 'Os direitos e garantias individuais são cláusula pétrea: não podem ser abolidos nem sofrer emenda tendente a aboli-los.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 109)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pmdf-cfo:nota:90', 'catalog:pmdf-cfo', 'nota', 'resumo_proprio', 'Ficha — Constituição Federal de 1988: arts. 5º, 37 e 144', 'Resumo de estudo dos dispositivos mais recorrentes em provas de carreiras policiais. O texto entre aspas é citação literal da redação oficial; o restante é explicação didática de autoria própria.
+
+Art. 5º — Direitos e garantias individuais. "Todos são iguais perante a lei, sem distinção de qualquer natureza..." Abrange a inviolabilidade da vida, liberdade, igualdade, segurança e propriedade. É cláusula pétrea (art. 60, § 4º). Ponto de prova: o caput é exemplificativo, não taxativo (art. 5º, § 2º).
+
+Art. 37 — Administração pública. Estabelece os princípios expressos: "legalidade, impessoalidade, moralidade, publicidade e eficiência". A eficiência foi incluída pela EC 19/1998. Costuma aparecer combinado com os princípios implícitos (razoabilidade, proporcionalidade, motivação) e com a Lei 8.429/1992 (improbidade).
+
+Art. 144 — Segurança pública. "A segurança pública, dever do Estado, direito e responsabilidade de todos..." Lista os órgãos responsáveis, entre eles a polícia federal, a polícia rodoviária federal e as polícias militares. Ponto de prova: segurança pública é dever do Estado, mas também direito e responsabilidade de todos.
+
+Checagem de aprendizagem: (1) Quais são os cinco princípios expressos do art. 37? (2) O art. 144 caput trata a segurança pública como direito de quem? (3) O art. 5º é cláusula pétrea?', null, null, '', '', 'Constituição Federal de 1988', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 90)
+on conflict (collection_id, title, kind) do nothing;
+
+-- Coleção: Polícia Federal — Carreira Policial (Edital 2025)
+insert into catalog_collections (id, slug, title, discipline_label, summary, status, status_note, source_name, source_url, edital_ref, checked_at) values ('catalog:pf-policial-2025', 'pf-policial-2025', 'Polícia Federal — Carreira Policial (Edital 2025)', 'Concursos', 'Trilha de preparação para os cargos policiais da Polícia Federal (Agente, Escrivão, Papiloscopista, entre outros) conforme o Edital nº 1 - PF - Policial, de 20/05/2025.', 'vigente', 'Edital nº 1 - PF - Policial, de 20/05/2025 confirmado (banca Cebraspe), com retificações (editais subsequentes) e edições de resultado. Confirme as atualizações no endereço oficial do certame antes da prova.', 'Edital nº 1 - PF - Policial, de 20/05/2025 (Cebraspe / Polícia Federal)', 'https://www.gov.br/pf/pt-br/acesso-a-informacao/servidores/concursos/edital/carreira-policial-2025/editais', 'Edital nº 1 - PF - Policial, de 20/05/2025', '2026-10-20')
+on conflict (slug) do update set title = excluded.title, summary = excluded.summary, status = excluded.status, status_note = excluded.status_note, source_name = excluded.source_name, source_url = excluded.source_url, edital_ref = excluded.edital_ref, checked_at = excluded.checked_at, updated_at = now();
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:0', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Língua Portuguesa', '', null, null, '', '', 'Matéria da trilha', '', 0)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:1', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Raciocínio Lógico e Matemático', '', null, null, '', '', 'Matéria da trilha', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:2', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Noções de Informática', '', null, null, '', '', 'Matéria da trilha', '', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:3', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Noções de Direito Constitucional e Administrativo', '', null, null, '', '', 'Matéria da trilha', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:4', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Noções de Direito Penal e Processual Penal', '', null, null, '', '', 'Matéria da trilha', '', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:area:5', 'catalog:pf-policial-2025', 'area', 'resumo_proprio', 'Legislação Especial e Direitos Humanos', '', null, null, '', '', 'Matéria da trilha', '', 5)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:1', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Como estudar a carreira policial da PF', 'O Edital nº 1 - PF - Policial (20/05/2025) abrange, entre outros, os cargos de Delegado, Perito Criminal Federal, Escrivão, Agente e Papiloscopista Policial Federal. Para Agente, Escrivão e Papiloscopista, a prova objetiva traz um bloco de Conhecimentos Básicos (Bloco I) com 60 itens, além de prova discursiva; a Investigação Social é etapa eliminatória.
+
+Estratégia: (1) garanta o Bloco I, reprovando notas abaixo do mínimo; (2) integre Direito Penal, Processual Penal e Legislação Especial, muito cobrados; (3) mantenha Informática e Raciocínio Lógico com treino de questões; (4) treine a discursiva com temas de direitos humanos e segurança pública.
+
+Material introdutório e autoral; não substitui o edital.', null, null, '', '', 'Orientação de estudo (base: edital 2025)', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:2', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Nota — Direito Penal: princípio da legalidade', 'O princípio da legalidade (art. 1º do CP) exige que não há crime sem lei anterior que o defina, nem pena sem prévia cominação legal (nullum crimen, nulla poena sine lege). Dois desdobramentos:
+
+- Anterioridade: a lei deve ser prévia ao fato.
+- Reserva legal: lei em sentido estrito.
+
+A lei penal não retroage, salvo para beneficiar o réu (CF, art. 5º, XL).
+
+Erro comum: confundir legalidade com atipicidade. A atipicidade é a consequência de o fato não se encaixar no tipo penal, ainda que exista lei.', null, null, '', '', 'Código Penal, art. 1º; CF/88, art. 5º, XXXIX', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:3', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Nota — Direito Processual Penal: inquérito policial', 'O inquérito policial é procedimento administrativo, inquisitivo, escrito, destinado a apurar a materialidade e a autoria de infração penal, conduzido pela polícia judiciária.
+
+Características: dispensável (o MP pode oferecer denúncia com outros elementos), sigiloso quanto a terceiros, indisponível (a autoridade não pode arquivar). Prazo: em regra 10 dias se preso e 30 dias se solto.
+
+Ponto de prova: o inquérito não se presta ao contraditório pleno; a defesa atua de modo limitado.', null, null, '', '', 'Código de Processo Penal, arts. 4º a 23', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:4', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Nota — Direito Constitucional: remédios constitucionais', 'Remédios constitucionais mais cobrados:
+
+- Habeas corpus (art. 5º, LXVIII): liberdade de locomoção; gratuito.
+- Habeas data (LXXII): acesso/retificação de dados pessoais em registros públicos.
+- Mandado de segurança (LXIX): direito líquido e certo não amparado por HC/HD.
+- Mandado de injunção (LXXI): falta de norma regulamentadora.
+- Ação popular (LXXIII): ato lesivo ao patrimônio público/moralidade/meio ambiente.
+
+Erro comum: atribuir o habeas data à liberdade de locomoção. Locomoção é HC.', null, null, '', '', 'Constituição Federal de 1988, art. 5º', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:5', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Nota — Noções de Informática: segurança da informação', 'Princípios de segurança (CID): confidencialidade, integridade e disponibilidade. Termos frequentes em prova:
+
+- Autenticação x autorização: provar identidade x conceder acesso.
+- Criptografia simétrica (mesma chave) x assimétrica (par de chaves pública/privada).
+- Assinatura digital: garante autenticidade e integridade (não sigilo por si só).
+- Phishing, ransomware e engenharia social: ameaças comuns.
+
+Dica: diferencie backup (cópia) de redundância (duplicação operacional).', null, null, '', '', 'Conteúdo comum de preparação', '', 5)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:flashcard:20', 'catalog:pf-policial-2025', 'flashcard', 'flashcard', 'Flashcard — Remédio para liberdade de locomoção', 'Frente: Qual remédio constitucional protege a liberdade de locomoção e é gratuito?
+
+Verso: Habeas corpus (art. 5º, LXVIII).', null, null, '', '', 'Constituição Federal de 1988, art. 5º, LXVIII', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 20)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:flashcard:21', 'catalog:pf-policial-2025', 'flashcard', 'flashcard', 'Flashcard — Princípio da legalidade penal', 'Frente: O que significa nullum crimen, nulla poena sine lege?
+
+Verso: Não há crime sem lei anterior que o defina, nem pena sem prévia cominação legal.', null, null, '', '', 'Código Penal, art. 1º', '', 21)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:flashcard:22', 'catalog:pf-policial-2025', 'flashcard', 'flashcard', 'Flashcard — CID na segurança da informação', 'Frente: Quais são os três princípios básicos (CID) da segurança da informação?
+
+Verso: Confidencialidade, Integridade e Disponibilidade.', null, null, '', '', 'Informática (conteúdo comum)', '', 22)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:flashcard:23', 'catalog:pf-policial-2025', 'flashcard', 'flashcard', 'Flashcard — Inquérito policial é dispensável?', 'Frente: O inquérito policial é peça indispensável para a denúncia?
+
+Verso: Não. É dispensável; o MP pode denunciar com base em outros elementos.', null, null, '', '', 'Código de Processo Penal', '', 23)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:flashcard:24', 'catalog:pf-policial-2025', 'flashcard', 'flashcard', 'Flashcard — Anterioridade penal', 'Frente: A lei penal pode retroagir? Em que hipótese?
+
+Verso: Em regra não; retroage apenas para beneficiar o réu.', null, null, '', '', 'Constituição Federal de 1988, art. 5º, XL', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 24)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:100', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-01', 'Assinale a alternativa que apresenta um remédio constitucional gratuito destinado a proteger a liberdade de locomoção.', '["Mandado de segurança","Habeas data","Habeas corpus","Ação popular","Mandado de injunção"]', 2, 'O habeas corpus (art. 5º, LXVIII) protege a liberdade de locomoção e é gratuito.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 100)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:101', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-02', 'Sobre o princípio da legalidade penal, é correto afirmar que:', '["basta decreto para criar crime.","não há crime sem lei anterior que o defina, nem pena sem prévia cominação legal.","a lei penal sempre retroage.","a medida provisória é o instrumento adequado para tipificar crimes.","a legalidade não se aplica às contravenções."]', 1, 'Legalidade penal (art. 1º do CP): exige lei anterior (reserva legal + anterioridade); retroação só em benefício do réu.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 101)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:102', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-03', 'O inquérito policial, segundo o CPP, é:', '["peça indispensável para o oferecimento da denúncia.","procedimento judicial contraditório pleno.","procedimento administrativo inquisitivo e dispensável.","ato exclusivo do Ministério Público.","instrumento que impede a defesa de qualquer acesso."]', 2, 'O IP é procedimento administrativo, inquisitivo e dispensável; não é plenamente contraditório.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 102)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:103', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-04', 'O princípio da disponibilidade da ação penal pública significa que:', '["o delegado pode arquivar o inquérito.","o inquérito é indisponível para a autoridade policial.","o MP pode arquivar a denúncia por conveniência.","a ação penal pública é de titularidade do ofendido.","não há ação penal pública no Brasil."]', 1, 'O inquérito policial é indisponível para a autoridade policial; quem pode promover o arquivamento é o MP, nos termos legais.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 103)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:104', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-05', 'Em segurança da informação, o princípio da integridade garante que:', '["a informação esteja sempre disponível.","a informação seja mantida correta e não alterada indevidamente.","os dados sejam públicos.","haja backup obrigatório.","o usuário seja autenticado por senha."]', 1, 'Integridade assegura que a informação seja mantida íntegra/inalterada indevidamente. Disponibilidade é o outro princípio (CID).', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 104)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:105', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-06', 'A assinatura digital de um documento tem como função principal:', '["cifrar o documento para torná-lo secreto.","garantir autenticidade e integridade do documento.","substituir a senha do usuário.","aumentar a velocidade da rede.","comprimir o arquivo."]', 1, 'A assinatura digital garante autenticidade e integridade; o sigilo é papel da criptografia, não da assinatura por si só.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 105)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:106', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-07', 'Sobre a Investigação Social no concurso da PF, é correto afirmar que:', '["é etapa classificatória, mas não eliminatória.","não existe no concurso da PF.","é etapa eliminatória.","só se aplica ao cargo de Delegado.","substitui a prova de aptidão física."]', 2, 'Conforme o edital, a Investigação Social é etapa eliminatória do certame.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 106)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:107', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-08', 'O habeas data destina-se a:', '["assegurar conhecimento/retificação de dados relativos à pessoa do impetrante em registros públicos.","proteger a liberdade de locomoção.","suprir falta de norma regulamentadora.","anular ato lesivo ao patrimônio público.","garantir o contraditório no inquérito."]', 0, 'O habeas data (art. 5º, LXXII) serve ao acesso/retificação de dados pessoais em registros de entidades governamentais ou de caráter público.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 107)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:108', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-09', 'Na distinção entre autenticação e autorização:', '["autenticação concede acesso; autorização prova identidade.","autenticação prova identidade; autorização concede acesso.","são sinônimos.","ambas se referem apenas a senhas.","autorização impede o login."]', 1, 'Autenticação é provar a identidade; autorização é definir o que aquele usuário pode acessar.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 108)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:questao:109', 'catalog:pf-policial-2025', 'questao', 'questao_autoral', 'Questão autoral PF-10', 'A redação do art. 144 da CF/88 trata a segurança pública como:', '["dever exclusivo das polícias civis.","dever do Estado, direito e responsabilidade de todos.","matéria não prevista na Constituição.","atribuição exclusiva da União.","responsabilidade apenas dos municípios."]', 1, 'Art. 144, caput: segurança pública é dever do Estado, direito e responsabilidade de todos.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 109)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:pf-policial-2025:nota:90', 'catalog:pf-policial-2025', 'nota', 'resumo_proprio', 'Ficha — Constituição Federal de 1988: arts. 5º, 37 e 144', 'Resumo de estudo dos dispositivos mais recorrentes em provas de carreiras policiais. O texto entre aspas é citação literal da redação oficial; o restante é explicação didática de autoria própria.
+
+Art. 5º — Direitos e garantias individuais. "Todos são iguais perante a lei, sem distinção de qualquer natureza..." Abrange a inviolabilidade da vida, liberdade, igualdade, segurança e propriedade. É cláusula pétrea (art. 60, § 4º). Ponto de prova: o caput é exemplificativo, não taxativo (art. 5º, § 2º).
+
+Art. 37 — Administração pública. Estabelece os princípios expressos: "legalidade, impessoalidade, moralidade, publicidade e eficiência". A eficiência foi incluída pela EC 19/1998. Costuma aparecer combinado com os princípios implícitos (razoabilidade, proporcionalidade, motivação) e com a Lei 8.429/1992 (improbidade).
+
+Art. 144 — Segurança pública. "A segurança pública, dever do Estado, direito e responsabilidade de todos..." Lista os órgãos responsáveis, entre eles a polícia federal, a polícia rodoviária federal e as polícias militares. Ponto de prova: segurança pública é dever do Estado, mas também direito e responsabilidade de todos.
+
+Checagem de aprendizagem: (1) Quais são os cinco princípios expressos do art. 37? (2) O art. 144 caput trata a segurança pública como direito de quem? (3) O art. 5º é cláusula pétrea?', null, null, '', '', 'Constituição Federal de 1988', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 90)
+on conflict (collection_id, title, kind) do nothing;
+
+-- Coleção: PRF — Policial Rodoviário Federal
+insert into catalog_collections (id, slug, title, discipline_label, summary, status, status_note, source_name, source_url, edital_ref, checked_at) values ('catalog:prf-policial', 'prf-policial', 'PRF — Policial Rodoviário Federal', 'Concursos', 'Trilha de preparação para o cargo de Policial Rodoviário Federal (PRF), Padrão I da Terceira Classe, com tópicos básicos e específicos.', 'historico', 'Baseado no Edital Concurso PRF nº 1, de 18/01/2021 (Cebraspe) — referência histórica do último edital oficial. A validade foi prorrogada por decisão judicial (Edital nº 119, de 18/06/2026, +6 meses). Não há, nesta verificação, novo edital de abertura confirmado; não trate este material como edital vigente.', 'Edital Concurso PRF nº 1, de 18/01/2021 (Cebraspe / PRF)', 'https://www.gov.br/prf/pt-br/acesso-a-informacao/servidores/concursos-e-selecoes/concurso-2021', 'Edital Concurso PRF nº 1, de 18/01/2021', '2026-10-20')
+on conflict (slug) do update set title = excluded.title, summary = excluded.summary, status = excluded.status, status_note = excluded.status_note, source_name = excluded.source_name, source_url = excluded.source_url, edital_ref = excluded.edital_ref, checked_at = excluded.checked_at, updated_at = now();
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:0', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Língua Portuguesa', '', null, null, '', '', 'Matéria da trilha', '', 0)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:1', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Raciocínio Lógico e Matemático', '', null, null, '', '', 'Matéria da trilha', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:2', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Física e Noções de Mecânica', '', null, null, '', '', 'Matéria da trilha', '', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:3', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Noções de Direito (Constitucional, Administrativo e Penal)', '', null, null, '', '', 'Matéria da trilha', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:4', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Legislação de Trânsito e Direito de Trânsito', '', null, null, '', '', 'Matéria da trilha', '', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:area:5', 'catalog:prf-policial', 'area', 'resumo_proprio', 'Ética no Serviço Público', '', null, null, '', '', 'Matéria da trilha', '', 5)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:1', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Como estudar para a PRF', 'A PRF exige graduação em qualquer área e organiza o concurso em etapas: prova objetiva e discursiva (1ª etapa), seguidas do Curso de Formação Policial (CFP) na UniPRF (2ª etapa), de caráter eliminatório e classificatório. A investigação social percorre todo o certame.
+
+Estratégia: (1) fortaleça Português e Raciocínio Lógico; (2) domine Física aplicada a trânsito (velocidade, frenagem, dinâmica); (3) integre Legislação de Trânsito (CTB) com Direito Constitucional e Penal; (4) treine Ética e a prova discursiva.
+
+Material introdutório e autoral; confira sempre o edital oficial mais recente.', null, null, '', '', 'Orientação de estudo (base: edital 2021)', '', 1)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:2', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Nota — Física: cinemática e movimento uniforme', 'Movimento uniforme (MU): velocidade constante. Equações:
+
+- v = ΔS / Δt
+- S = S₀ + v·t
+
+Unidades: SI usa m/s; para converter km/h em m/s, divida por 3,6.
+
+Exemplo resolvido: um veículo a 72 km/h percorre 100 m em quanto tempo? 72 km/h = 20 m/s; t = 100 / 20 = 5 s.
+
+Erro comum: esquecer a conversão de unidades. Sempre confira se velocidade e distância estão no mesmo sistema.', null, null, '', '', 'Conteúdo comum de preparação (Física)', '', 2)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:3', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Nota — Legislação de Trânsito: infrações e penalidades', 'As infrações do CTB classificam-se em leve, média, grave e gravíssima, com pontuação e valores distintos.
+
+Conceitos-chave: penalidade (advertência, multa, suspensão, cassação) x medida administrativa (retenção, remoção do veículo, recolhimento de CNH).
+
+Ponto de prova: direção sob influência de álcool é infração gravíssima, com multiplicador e possibilidade de crime de trânsito (art. 306 do CTB).
+
+Dica: crie uma tabela de pontos por gravidade e revise semanalmente.', null, null, '', '', 'Código de Trânsito Brasileiro (Lei 9.503/1997)', '', 3)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:4', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Nota — Direito Administrativo: princípios e poderes', 'A administração pública rege-se pelos princípios expressos do art. 37 (LIMPE) e por poderes administrativos:
+
+- Poder hierárquico, disciplinar, regulamentar, de polícia.
+- Poder de polícia: condiciona/limita direitos em favor do interesse público (ex.: fiscalização de trânsito).
+
+Erro comum: confundir poder de polícia (administração) com polícia judiciária (apuração de crimes). O policiamento ostensivo de trânsito aproxima-se do poder de polícia.', null, null, '', '', 'Constituição Federal de 1988, art. 37', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 4)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:5', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Nota — Ética no serviço público', 'Princípios e valores: legalidade, impessoalidade, moralidade, publicidade, eficiência, além de dignidade, decoro, zelo, lealdade e cortesia.
+
+Vedações frequentes em prova: usar o cargo para favorecimento próprio ou de terceiros, retirar documento do órgão sem autorização, apresentar-se embriagado em serviço.
+
+Comissão de Ética: orienta e aconselha, sem natureza punitiva.
+
+Dica: relacione ética à moralidade administrativa do art. 37 da CF.', null, null, '', '', 'Decreto 1.171/1994 (Código de Ética) — conteúdo comum', '', 5)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:flashcard:20', 'catalog:prf-policial', 'flashcard', 'flashcard', 'Flashcard — Conversão km/h para m/s', 'Frente: Como converter 72 km/h para m/s?
+
+Verso: Divida por 3,6. 72 / 3,6 = 20 m/s.', null, null, '', '', 'Física (conteúdo comum)', '', 20)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:flashcard:21', 'catalog:prf-policial', 'flashcard', 'flashcard', 'Flashcard — Classificação das infrações do CTB', 'Frente: Quais são as classificações das infrações de trânsito no CTB?
+
+Verso: Leve, média, grave e gravíssima.', null, null, '', '', 'Código de Trânsito Brasileiro', '', 21)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:flashcard:22', 'catalog:prf-policial', 'flashcard', 'flashcard', 'Flashcard — Poder de polícia', 'Frente: O que caracteriza o poder de polícia da Administração?
+
+Verso: A faculdade de condicionar/limitar direitos e liberdades em favor do interesse público (ex.: fiscalização de trânsito).', null, null, '', '', 'Direito Administrativo (conteúdo comum)', '', 22)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:flashcard:23', 'catalog:prf-policial', 'flashcard', 'flashcard', 'Flashcard — Velocidade média', 'Frente: Qual a fórmula da velocidade média no movimento uniforme?
+
+Verso: v = ΔS / Δt (distância percorrida dividida pelo tempo).', null, null, '', '', 'Física (conteúdo comum)', '', 23)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:flashcard:24', 'catalog:prf-policial', 'flashcard', 'flashcard', 'Flashcard — Fases do concurso PRF', 'Frente: Quais são as etapas do concurso PRF conforme o edital de referência?
+
+Verso: 1ª etapa — prova objetiva e discursiva; 2ª etapa — Curso de Formação Policial (CFP) na UniPRF. A investigação social percorre todo o certame.', null, null, '', '', 'Edital PRF 2021', '', 24)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:100', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-01', 'Um veículo trafega a 72 km/h. Qual é sua velocidade em metros por segundo?', '["72 m/s","20 m/s","7,2 m/s","36 m/s","10 m/s"]', 1, 'Para converter km/h em m/s, divide-se por 3,6: 72 ÷ 3,6 = 20 m/s.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 100)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:101', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-02', 'No movimento uniforme, a velocidade média é dada por:', '["v = ΔS · Δt","v = ΔS / Δt","v = Δt / ΔS","v = ΔS + Δt","v = ΔS²"]', 1, 'Velocidade média = variação da posição (ΔS) dividida pelo intervalo de tempo (Δt).', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 101)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:102', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-03', 'Sobre as infrações do Código de Trânsito Brasileiro, é correto afirmar que:', '["existem apenas conforme a vontade do agente.","classificam-se em leve, média, grave e gravíssima.","são todas gravíssimas.","não geram pontuação.","só existem para veículos de carga."]', 1, 'O CTB classifica as infrações em leve, média, grave e gravíssima, com pontuações distintas.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 102)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:103', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-04', 'O poder de polícia da Administração caracteriza-se por:', '["apurar crimes e indiciar suspeitos.","condicionar o exercício de direitos e liberdades em favor do interesse público.","julgar infrações administrativas.","legislar sobre trânsito.","representar judicialmente o Estado."]', 1, 'Poder de polícia condiciona/limita direitos em favor do interesse público; a apuração de crimes é função da polícia judiciária.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 103)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:104', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-05', 'A direção de veículo sob influência de álcool, no CTB, configura infração:', '["leve","média","grave","gravíssima","não é infração"]', 3, 'A condução sob influência de álcool é infração gravíssima, podendo também configurar crime de trânsito (art. 306 do CTB).', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 104)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:105', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-06', 'O Curso de Formação Policial (CFP) do concurso PRF é:', '["primeira etapa, eliminatória.","segunda etapa, eliminatória e classificatória.","etapa meramente classificatória.","opcional, sem impacto na posse.","realizado antes da prova objetiva."]', 1, 'Conforme o edital de referência, o CFP é a segunda etapa, de caráter eliminatório e classificatório, realizado na UniPRF.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 105)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:106', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-07', 'Sobre a ética no serviço público, é vedado ao servidor:', '["ser cortês no atendimento.","usar o cargo para obter favorecimento próprio ou de terceiros.","zelar pelo patrimônio público.","cumprir a lei.","ser assíduo."]', 1, 'Usar o cargo para favorecimento próprio ou de terceiros viola o Código de Ética e a moralidade administrativa.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 106)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:107', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-08', 'A Comissão de Ética, no serviço público federal:', '["aplica penas criminais.","orienta e aconselha, sem natureza punitiva.","substitui a corregedoria.","julga crimes de trânsito.","demite servidores."]', 1, 'A Comissão de Ética tem função educativa/orientadora; não aplica penalidades.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 107)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:108', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-09', 'Em relação aos princípios da administração pública (art. 37), a PRF, ao fiscalizar rodovias, deve observar:', '["apenas a legalidade.","legalidade, impessoalidade, moralidade, publicidade e eficiência.","somente a eficiência.","a conveniência política do agente.","a discricionariedade absoluta, sem limites."]', 1, 'Toda atuação administrativa deve observar os cinco princípios expressos (LIMPE).', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 108)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:questao:109', 'catalog:prf-policial', 'questao', 'questao_autoral', 'Questão autoral PRF-10', 'Um veículo percorre 150 m em 6 s com velocidade constante. Sua velocidade é:', '["25 m/s","15 m/s","90 m/s","0,04 m/s","600 m/s"]', 0, 'v = ΔS / Δt = 150 / 6 = 25 m/s.', 'Autoral/gerada para prática — NÃO é questão oficial.', 'Treino autoral', '', 109)
+on conflict (collection_id, title, kind) do nothing;
+insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order) values ('catalog:prf-policial:nota:90', 'catalog:prf-policial', 'nota', 'resumo_proprio', 'Ficha — Constituição Federal de 1988: arts. 5º, 37 e 144', 'Resumo de estudo dos dispositivos mais recorrentes em provas de carreiras policiais. O texto entre aspas é citação literal da redação oficial; o restante é explicação didática de autoria própria.
+
+Art. 5º — Direitos e garantias individuais. "Todos são iguais perante a lei, sem distinção de qualquer natureza..." Abrange a inviolabilidade da vida, liberdade, igualdade, segurança e propriedade. É cláusula pétrea (art. 60, § 4º). Ponto de prova: o caput é exemplificativo, não taxativo (art. 5º, § 2º).
+
+Art. 37 — Administração pública. Estabelece os princípios expressos: "legalidade, impessoalidade, moralidade, publicidade e eficiência". A eficiência foi incluída pela EC 19/1998. Costuma aparecer combinado com os princípios implícitos (razoabilidade, proporcionalidade, motivação) e com a Lei 8.429/1992 (improbidade).
+
+Art. 144 — Segurança pública. "A segurança pública, dever do Estado, direito e responsabilidade de todos..." Lista os órgãos responsáveis, entre eles a polícia federal, a polícia rodoviária federal e as polícias militares. Ponto de prova: segurança pública é dever do Estado, mas também direito e responsabilidade de todos.
+
+Checagem de aprendizagem: (1) Quais são os cinco princípios expressos do art. 37? (2) O art. 144 caput trata a segurança pública como direito de quem? (3) O art. 5º é cláusula pétrea?', null, null, '', '', 'Constituição Federal de 1988', 'https://www4.planalto.gov.br/legislacao/portal-legis/legislacao-1/constituicao', 90)
+on conflict (collection_id, title, kind) do nothing;
+
+commit;
