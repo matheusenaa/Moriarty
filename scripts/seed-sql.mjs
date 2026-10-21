@@ -10,6 +10,7 @@
 import fs from "fs";
 import path from "path";
 import { COLLECTIONS, CHECKED_AT } from "./seed-catalog.mjs";
+import { EXTRAS_POR_SLUG } from "./conteudo-extra.mjs";
 
 const esc = (v) => {
   if (v === null || v === undefined) return "NULL";
@@ -100,6 +101,34 @@ for (const col of COLLECTIONS) {
         ].join(", ") +
         `)\non conflict (collection_id, title, kind) do nothing;`,
     );
+  }
+
+  const extrasFn = EXTRAS_POR_SLUG[col.slug];
+  if (extrasFn) {
+    for (const item of extrasFn()) {
+      const id = `catalog:${col.slug}:${item.kind}:${item.order}`;
+      lines.push(
+        `insert into catalog_items (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order, created_at, updated_at) values (` +
+          [
+            esc(id),
+            esc(colId),
+            esc(item.kind),
+            esc(item.category ?? "resumo_proprio"),
+            esc(item.title),
+            esc(item.body ?? ""),
+            esc(item.options ? JSON.stringify(item.options) : ""),
+            typeof item.correctIndex === "number" ? String(item.correctIndex) : "NULL",
+            esc(item.explanation ?? ""),
+            esc(item.originNote ?? ""),
+            esc(item.refLabel ?? ""),
+            esc(item.url ?? ""),
+            esc(item.order),
+            esc(now),
+            esc(now),
+          ].join(", ") +
+          `)\non conflict (collection_id, title, kind) do nothing;`,
+      );
+    }
   }
   lines.push("");
 }

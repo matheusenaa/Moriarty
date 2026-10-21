@@ -880,6 +880,28 @@ export async function seedCatalogPg(client) {
         sort_order: item.order,
       });
     }
+
+    // Conteúdo expandido (links oficiais, notas, flashcards, questões, cronograma).
+    const { EXTRAS_POR_SLUG } = await import("./conteudo-extra.mjs");
+    const extrasFn = EXTRAS_POR_SLUG[col.slug];
+    if (extrasFn) {
+      for (const item of extrasFn()) {
+        await insertItem({
+          id: `catalog:${col.slug}:${item.kind}:${item.order}`,
+          kind: item.kind,
+          category: item.category ?? "resumo_proprio",
+          title: item.title,
+          body: item.body ?? "",
+          options_json: item.options ? JSON.stringify(item.options) : "",
+          correct_index: typeof item.correctIndex === "number" ? item.correctIndex : null,
+          explanation: item.explanation ?? "",
+          origin_note: item.originNote ?? "",
+          ref_label: item.refLabel ?? "",
+          url: item.url ?? "",
+          sort_order: item.order,
+        });
+      }
+    }
   }
 
   return { collections: COLLECTIONS.length, items: itemCount, inserted };

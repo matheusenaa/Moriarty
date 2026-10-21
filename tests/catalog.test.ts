@@ -85,6 +85,20 @@ describe("catálogo de concursos — conteúdo inicial", () => {
       expect(ficha!.body).toContain("Art. 144");
     }
   });
+
+  it("cada trilha inclui fontes oficiais (link Planalto/Cebraspe) e cronograma sugerido", async () => {
+    for (const slug of requiredSlugs) {
+      const col = (await catalog.getCollectionBySlug(slug))!;
+      const notas = await catalog.listItems(col.id, "nota");
+      const fonte = notas.find((n) => n.ref_label === "Fonte oficial" && n.url.startsWith("https://"));
+      expect(fonte, `fonte oficial ausente em ${slug}`).toBeTruthy();
+      const cronograma = notas.find((n) =>
+        n.title.toLowerCase().includes("cronograma sugerido"),
+      );
+      expect(cronograma, `cronograma ausente em ${slug}`).toBeTruthy();
+      expect(cronograma!.body.length).toBeGreaterThan(50);
+    }
+  });
 });
 
 describe("seed idempotente", () => {
