@@ -49,6 +49,16 @@ export async function GET(req: Request) {
     const gamification = await import("@/lib/repo/gamification");
     const catalog = await import("@/lib/repo/catalog");
 
+    await run("getCurrentUserQuery", () =>
+      queryOne(
+        `SELECT u.id, u.email, p.username, p.display_name, p.timezone,
+                p.gamification_enabled, p.reminders_enabled, p.onboarded
+           FROM users u
+           JOIN profiles p ON p.user_id = u.id
+          WHERE u.id = $1 AND u.deleted_at IS NULL`,
+        [prof.user_id],
+      ),
+    );
     await run("generateDailyReminders", () => notifications.generateDailyReminders(prof.user_id, today));
     await run("listNotifications", () => notifications.listNotifications(prof.user_id));
     let streak = 0;
