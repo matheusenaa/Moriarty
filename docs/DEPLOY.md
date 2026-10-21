@@ -163,28 +163,37 @@ estar fechada e o comando acima falha com `connect ETIMEDOUT ...:5432`. Nesse ca
 > Se o bloqueio for da rede **do provedor de deploy**, use o *Transaction Pooler* (porta 6543) do
 > Supabase como `DATABASE_URL`.
 
-#### Alternativa sem SQL Editor: seed via endpoint HTTP
+#### Alternativa sem SQL Editor: botão dentro do app
 
-Se você **não quiser** colar arquivos no SQL Editor, use o endpoint de seed — ele roda o seed
-idempotente **dentro da Vercel** (que tem rede aberta ao Supabase). Não precisa de acesso local à
-porta 5432.
+A forma mais simples de carregar o conteúdo no banco, sem terminal e sem colar SQL:
 
-1. Na Vercel, em **Settings → Environment Variables**, adicione uma variável secreta:
-   - `SEED_TOKEN` = uma string longa e aleatória (guarde o valor).
+O app tem um **botão de administração** na página **Perfil**. Ele roda o seed no servidor (Vercel),
+que tem acesso aberto ao banco — então funciona mesmo quando a porta 5432 está bloqueada na sua
+rede. É idempotente: pode clicar quantas vezes quiser, não duplica nada.
+
+Para habilitar (uma vez):
+
+1. Na Vercel, em **Settings → Environment Variables**, adicione:
+   - `ADMIN_EMAIL` = o **e-mail da sua conta** no Moriarty.
 2. Faça **Redeploy** para a variável valer.
-3. Chame o endpoint (troque a URL e o token):
+3. Abra o app → **Perfil** → card **“Administração — conteúdo das trilhas”** → clique em
+   **“Carregar / atualizar conteúdo das trilhas”**.
 
-   ```powershell
-   curl.exe -X POST https://SEU-APP.vercel.app/api/admin/seed `
-     -H "x-seed-token: SEU_TOKEN"
-   ```
+Pronto: aparece a mensagem `Pronto: 3 trilhas e N itens no banco`.
 
-   Retorno esperado: `{"ok":true,"collections":3,"items":...,"inserted":...}`.
+> Só o e-mail definido em `ADMIN_EMAIL` vê esse card. Se `ADMIN_EMAIL` não estiver configurado, o
+> card não aparece para ninguém (recurso desativado). Nada fica exposto publicamente.
 
-4. Rode quantas vezes quiser: o seed é **idempotente** (`ON CONFLICT`), então não duplica nada.
+---
 
-> Segurança: sem `SEED_TOKEN` configurado o endpoint retorna 404 (desativado). Com o token errado,
-> 401. Depois de migrar, você pode **remover** a variável `SEED_TOKEN` para desativar de vez.
+#### Alternativa avançada (opcional): seed via endpoint com token
+
+Se preferir automatizar por script (CI, terminal), existe também `POST /api/admin/seed`, protegido
+pelo header `x-seed-token` (variável `SEED_TOKEN`). Sem `SEED_TOKEN`, retorna 404. Exemplo:
+
+```powershell
+curl.exe -X POST https://SEU-APP.vercel.app/api/admin/seed -H "x-seed-token: SEU_TOKEN"
+```
 
 ---
 

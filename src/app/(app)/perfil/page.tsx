@@ -12,6 +12,7 @@ import { studyStreak } from "@/lib/repo/stats";
 import { todayStr } from "@/lib/dates";
 import { rankForXp, ACHIEVEMENTS } from "@/lib/xp";
 import { Badge } from "@/components/Badge";
+import { SeedButton } from "@/components/SeedButton";
 
 export default async function PerfilPage() {
   const user = await getCurrentUser();
@@ -23,6 +24,8 @@ export default async function PerfilPage() {
   const streak = await studyStreak(user.id, today);
   const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const isAdmin = Boolean(adminEmail) && user.email.trim().toLowerCase() === adminEmail;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -105,6 +108,18 @@ export default async function PerfilPage() {
         </CardDescription>
         <ExportButton />
       </Card>
+
+      {isAdmin ? (
+        <Card>
+          <CardTitle>Administração — conteúdo das trilhas</CardTitle>
+          <CardDescription>
+            Carrega/atualiza as trilhas de concursos (PMDF, PF, PRF) no banco. É idempotente: pode
+            clicar quantas vezes quiser, não duplica nada. Roda no servidor, então funciona mesmo
+            quando a porta do banco está bloqueada na sua rede.
+          </CardDescription>
+          <SeedButton />
+        </Card>
+      ) : null}
 
       <Card className="border-alerta/40">
         <CardTitle>Zona de risco</CardTitle>
