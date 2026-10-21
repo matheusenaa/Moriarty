@@ -1,16 +1,19 @@
 "use server";
 
-import path from "path";
-import { pathToFileURL } from "url";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
 import { ehAdmin } from "@/lib/admin";
+import { seedCatalogPg } from "../../scripts/seed-catalog.mjs";
 
 export type SeedState = { ok: boolean; message: string };
 
 /**
  * Roda o seed do catálogo (idempotente) direto pela interface, sem terminal.
+ *
+ * O módulo do seed é importado ESTATICAMENTE de propósito: assim o bundler
+ * embute o conteúdo no pacote da função (na Vercel, `scripts/` não existe em
+ * disco em runtime).
  *
  * Segurança: só administradores (ver src/lib/admin.ts) podem executar.
  * Roda no servidor (Vercel), que tem acesso aberto ao banco.
@@ -22,9 +25,7 @@ export async function rodarSeedAction(): Promise<SeedState> {
   }
 
   try {
-    const modulePath = path.join(process.cwd(), "scripts", "seed-catalog.mjs");
-    const mod = await import(pathToFileURL(modulePath).href);
-    const result = (await mod.seedCatalogPg(getPool())) as {
+    const result = (await seedCatalogPg(getPool())) as {
       collections: number;
       items: number;
       inserted: number;
@@ -32,6 +33,7 @@ export async function rodarSeedAction(): Promise<SeedState> {
     revalidatePath("/biblioteca/concursos");
     revalidatePath("/fontes");
     revalidatePath("/perfil");
+    revalidatePath("/admin");
     return {
       ok: true,
       message: `Pronto: ${result.collections} trilhas e ${result.items} itens no banco.`,

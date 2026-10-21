@@ -113,8 +113,8 @@ O que esse comando faz:
 - Lê o `DATABASE_URL` do `.env.local`.
 - Aplica as migrações de `db/postgres/*.sql` (tabelas de contas, planejamento, revisão,
   materiais, amizade, questões, gamificação, catálogo de concursos...).
-- Executa o **seed** do conteúdo inicial (trilhas PMDF, PF e PRF) — idempotente, pode rodar
-  de novo sem duplicar.
+- Executa o **seed** do conteúdo inicial (6 trilhas: PMDF CFO, PF, PRF, PCDF Agente,
+  PMDF Soldado e Polícia Penal) — idempotente, pode rodar de novo sem duplicar.
 
 Saída esperada (algo parecido):
 
@@ -122,7 +122,7 @@ Saída esperada (algo parecido):
 Migração aplicada: 001_init
 Migração aplicada: 002_catalogo
 Migração aplicada: 003_catalog_progress
-Seed de conteúdo: 3 coleções, ... itens (inseridos: ...).
+Seed de conteúdo: 6 coleções, ... itens (inseridos: ...).
 Banco pronto.
 ```
 

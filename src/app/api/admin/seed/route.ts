@@ -1,7 +1,6 @@
-import path from "path";
-import { pathToFileURL } from "url";
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
+import { seedCatalogPg } from "../../../../../scripts/seed-catalog.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,9 +8,9 @@ export const dynamic = "force-dynamic";
 /**
  * Seed do catálogo via HTTP (idempotente).
  *
- * Por que existe: a rede local pode bloquear a porta 5432 do Supabase, mas a
- * Vercel (onde o app roda) tem acesso aberto. Assim o conteúdo chega ao banco
- * de produção sem depender do SQL Editor manual.
+ * O módulo do seed é importado ESTATICAMENTE de propósito: assim o bundler
+ * embute o conteúdo no pacote da função (na Vercel, `scripts/` não existe em
+ * disco em runtime).
  *
  * Segurança: exige header `x-seed-token` igual a SEED_TOKEN (variável de
  * ambiente). Sem SEED_TOKEN configurado, o endpoint fica desativado (404).
@@ -28,10 +27,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const modulePath = path.join(process.cwd(), "scripts", "seed-catalog.mjs");
-    const mod = await import(pathToFileURL(modulePath).href);
-    const pool = getPool();
-    const result = await mod.seedCatalogPg(pool);
+    const result = await seedCatalogPg(getPool());
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
