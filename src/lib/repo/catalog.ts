@@ -229,6 +229,11 @@ export async function collectionProgressCounts(
 
 export type QuestionResult = { isCorrect: boolean; attempts: number; chosenIndex: number };
 
+/** Postgres 42P01 = "undefined_table": migração 0004 ainda não aplicada. */
+function isMissingAnswersTable(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "42P01";
+}
+
 export type CatalogQuestionStat = {
   slug: string;
   title: string;
@@ -257,16 +262,21 @@ export async function recordQuestionAnswer(
   isCorrect: boolean,
 ): Promise<void> {
   const now = nowIso();
-  await execute(
-    `INSERT INTO catalog_answers (id, user_id, item_id, chosen_index, is_correct, attempts, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
-     ON CONFLICT(user_id, item_id) DO UPDATE SET
-       chosen_index = excluded.chosen_index,
-       is_correct = excluded.is_correct,
-       attempts = catalog_answers.attempts + 1,
-       updated_at = excluded.updated_at`,
-    [uid(), userId, itemId, chosenIndex, isCorrect ? 1 : 0, now, now],
-  );
+  try {
+    await execute(
+      `INSERT INTO catalog_answers (id, user_id, item_id, chosen_index, is_correct, attempts, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
+       ON CONFLICT(user_id, item_id) DO UPDATE SET
+         chosen_index = excluded.chosen_index,
+         is_correct = excluded.is_correct,
+         attempts = catalog_answers.attempts + 1,
+         updated_at = excluded.updated_at`,
+      [uid(), userId, itemId, chosenIndex, isCorrect ? 1 : 0, now, now],
+    );
+  } catch (err) {
+    if (isMissingAnswersTable(err)) return; // migração 0004 pendente: não bloqueia o estudo
+    throw err;
+  }
 }
 
 /** Mapa item_id → último resultado, restrito aos itens informados. */
@@ -275,25 +285,30 @@ export async function getUserQuestionResults(
   itemIds: string[],
 ): Promise<Record<string, QuestionResult>> {
   if (itemIds.length === 0) return {};
-  const rows = await query<{
-    item_id: string;
-    is_correct: number;
-    attempts: number;
-    chosen_index: number;
-  }>(
-    `SELECT item_id, is_correct, attempts, chosen_index FROM catalog_answers
-      WHERE user_id = $1 AND item_id IN (${itemIds.map((_, i) => `$${i + 2}`).join(",")})`,
-    [userId, ...itemIds],
-  );
-  const out: Record<string, QuestionResult> = {};
-  for (const r of rows) {
-    out[r.item_id] = {
-      isCorrect: r.is_correct === 1,
-      attempts: Number(r.attempts),
-      chosenIndex: Number(r.chosen_index),
-    };
+  try {
+    const rows = await query<{
+      item_id: string;
+      is_correct: number;
+      attempts: number;
+      chosen_index: number;
+    }>(
+      `SELECT item_id, is_correct, attempts, chosen_index FROM catalog_answers
+        WHERE user_id = $1 AND item_id IN (${itemIds.map((_, i) => `$${i + 2}`).join(",")})`,
+      [userId, ...itemIds],
+    );
+    const out: Record<string, QuestionResult> = {};
+    for (const r of rows) {
+      out[r.item_id] = {
+        isCorrect: r.is_correct === 1,
+        attempts: Number(r.attempts),
+        chosenIndex: Number(r.chosen_index),
+      };
+    }
+    return out;
+  } catch (err) {
+    if (isMissingAnswersTable(err)) return {};
+    throw err;
   }
-  return out;
 }
 
 /** Contagem de questões respondidas/acertadas numa trilha específica. */
@@ -310,7 +325,10 @@ export async function collectionQuestionStats(
      LEFT JOIN catalog_answers ca ON ca.item_id = ci.id AND ca.user_id = $1
      WHERE ci.collection_id = $2 AND ci.kind = 'questao'`,
     [userId, collectionId],
-  );
+  ).catch((err: unknown) => {
+    if (isMissingAnswersTable(err)) return null;
+    throw err;
+  });
   return {
     answered: Number(row?.answered ?? 0),
     correct: Number(row?.correct ?? 0),
@@ -320,60 +338,70 @@ export async function collectionQuestionStats(
 
 /** Estatísticas por trilha com pelo menos uma questão respondida. */
 export async function catalogQuestionStats(userId: string): Promise<CatalogQuestionStat[]> {
-  const rows = await query<{
-    slug: string;
-    title: string;
-    answered: string;
-    correct: string;
-    total: string;
-  }>(
-    `SELECT cc.slug, cc.title,
-            COUNT(ca.id) AS answered,
-            COALESCE(SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END), 0) AS correct,
-            COUNT(ci.id) AS total
-       FROM catalog_collections cc
-       JOIN catalog_items ci ON ci.collection_id = cc.id AND ci.kind = 'questao'
-       LEFT JOIN catalog_answers ca ON ca.item_id = ci.id AND ca.user_id = $1
-      GROUP BY cc.id, cc.slug, cc.title
-     HAVING COUNT(ca.id) > 0
-      ORDER BY cc.title`,
-    [userId],
-  );
-  return rows.map((r) => ({
-    slug: r.slug,
-    title: r.title,
-    answered: Number(r.answered),
-    correct: Number(r.correct),
-    total: Number(r.total),
-  }));
+  try {
+    const rows = await query<{
+      slug: string;
+      title: string;
+      answered: string;
+      correct: string;
+      total: string;
+    }>(
+      `SELECT cc.slug, cc.title,
+              COUNT(ca.id) AS answered,
+              COALESCE(SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END), 0) AS correct,
+              COUNT(ci.id) AS total
+         FROM catalog_collections cc
+         JOIN catalog_items ci ON ci.collection_id = cc.id AND ci.kind = 'questao'
+         LEFT JOIN catalog_answers ca ON ca.item_id = ci.id AND ca.user_id = $1
+        GROUP BY cc.id, cc.slug, cc.title
+       HAVING COUNT(ca.id) > 0
+        ORDER BY cc.title`,
+      [userId],
+    );
+    return rows.map((r) => ({
+      slug: r.slug,
+      title: r.title,
+      answered: Number(r.answered),
+      correct: Number(r.correct),
+      total: Number(r.total),
+    }));
+  } catch (err) {
+    if (isMissingAnswersTable(err)) return [];
+    throw err;
+  }
 }
 
 /** Questões respondidas erradas por último (para revisão), mais recentes primeiro. */
 export async function listMissedQuestions(userId: string, limit = 10): Promise<MissedQuestion[]> {
-  const rows = await query<{
-    item_id: string;
-    title: string;
-    attempts: number;
-    updated_at: string;
-    slug: string;
-    collection_title: string;
-  }>(
-    `SELECT ca.item_id, ci.title, ca.attempts, ca.updated_at,
-            cc.slug, cc.title AS collection_title
-       FROM catalog_answers ca
-       JOIN catalog_items ci ON ci.id = ca.item_id
-       JOIN catalog_collections cc ON cc.id = ci.collection_id
-      WHERE ca.user_id = $1 AND ca.is_correct = 0
-      ORDER BY ca.updated_at DESC
-      LIMIT $2`,
-    [userId, limit],
-  );
-  return rows.map((r) => ({
-    itemId: r.item_id,
-    title: r.title,
-    attempts: Number(r.attempts),
-    updatedAt: r.updated_at,
-    collectionSlug: r.slug,
-    collectionTitle: r.collection_title,
-  }));
+  try {
+    const rows = await query<{
+      item_id: string;
+      title: string;
+      attempts: number;
+      updated_at: string;
+      slug: string;
+      collection_title: string;
+    }>(
+      `SELECT ca.item_id, ci.title, ca.attempts, ca.updated_at,
+              cc.slug, cc.title AS collection_title
+         FROM catalog_answers ca
+         JOIN catalog_items ci ON ci.id = ca.item_id
+         JOIN catalog_collections cc ON cc.id = ci.collection_id
+        WHERE ca.user_id = $1 AND ca.is_correct = 0
+        ORDER BY ca.updated_at DESC
+        LIMIT $2`,
+      [userId, limit],
+    );
+    return rows.map((r) => ({
+      itemId: r.item_id,
+      title: r.title,
+      attempts: Number(r.attempts),
+      updatedAt: r.updated_at,
+      collectionSlug: r.slug,
+      collectionTitle: r.collection_title,
+    }));
+  } catch (err) {
+    if (isMissingAnswersTable(err)) return [];
+    throw err;
+  }
 }
