@@ -22,6 +22,8 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Busca e filtro de trilhas (texto + status) — `searchCollections`.
 - "Importar trilha para o plano" (cria matérias do usuário, idempotente por nome).
 - Progresso por trilha (notas lidas / flashcards dominados) em `catalog_progress`.
+- Progresso por questão das trilhas (acerto/erro ao responder, revisão das erradas e estatísticas
+  no Desempenho) em `catalog_answers`.
 - Roteiro de estudo exportável por trilha (HTML imprimível para PDF + download `.md`).
 - Agente de busca em fontes oficiais fixas (determinístico, sem IA paga) — 28 leis.
 - Trilhas adicionais: PCDF Agente/Investigador, PMDF Soldado (praças) e Polícia Penal.

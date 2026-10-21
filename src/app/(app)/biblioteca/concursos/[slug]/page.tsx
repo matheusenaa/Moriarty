@@ -5,6 +5,8 @@ import {
   getCollectionWithItems,
   getUserProgressMap,
   collectionProgressCounts,
+  getUserQuestionResults,
+  collectionQuestionStats,
   STATUS_LABEL,
   CATEGORY_LABEL,
 } from "@/lib/repo/catalog";
@@ -44,6 +46,21 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
   const doneCount = progressCounts.lido + progressCounts.dominado;
   const pct = trackableCount > 0 ? Math.round((doneCount / trackableCount) * 100) : 0;
   const identidade = identificarConcurso(c.slug);
+
+  const questionResults = await getUserQuestionResults(user.id, questoes.map((q) => q.id));
+  const questionStats = await collectionQuestionStats(user.id, c.id);
+  const questionAccuracy =
+    questionStats.answered > 0
+      ? Math.round((questionStats.correct / questionStats.answered) * 100)
+      : 0;
+  const questionsOrdered = [...questoes].sort((a, b) => {
+    const rank = (id: string) => {
+      const r = questionResults[id];
+      if (!r) return 0;
+      return r.isCorrect ? 2 : 1;
+    };
+    return rank(a.id) - rank(b.id);
+  });
 
   return (
     <div className={`${classeTema(identidade)} mx-auto max-w-4xl space-y-6`}>
@@ -146,6 +163,13 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
         <CardDescription className="mt-2">
           O progresso é seu; o conteúdo da trilha permanece igual para todos.
         </CardDescription>
+        <p className="mt-3 text-sm text-cinza">
+          Questões de treino: <strong className="text-pergaminho">{questionStats.answered}</strong> de{" "}
+          {questionStats.total} respondidas
+          {questionStats.answered > 0
+            ? ` — ${questionStats.correct} acerto(s) (${questionAccuracy}%)`
+            : " — comece por aqui, as não respondidas aparecem primeiro."}
+        </p>
       </Card>
 
       <Card>
@@ -228,9 +252,10 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
         <h2 className="font-titulo text-xl font-bold">Questões de treino ({questoes.length})</h2>
         <p className="text-sm text-cinza">
           Todas as questões são <strong>autorais</strong> (geradas para prática) — não são questões
-          de prova oficial. O gabarito e a explicação são de autoria própria.
+          de prova oficial. O gabarito e a explicação são de autoria própria. As não respondidas e
+          as que você errou aparecem primeiro.
         </p>
-        {questoes.map((q) => {
+        {questionsOrdered.map((q) => {
           let options: string[] = [];
           try {
             options = JSON.parse(q.options_json) as string[];
@@ -240,6 +265,7 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
           return (
             <CatalogQuestion
               key={q.id}
+              previous={questionResults[q.id] ?? null}
               item={{
                 id: q.id,
                 title: q.title,

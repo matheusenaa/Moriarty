@@ -16,6 +16,7 @@ const MIGRATIONS = [
   { name: "001_init", file: path.join("db", "postgres", "0001_init.sql") },
   { name: "002_catalogo", file: path.join("db", "postgres", "0002_catalogo.sql") },
   { name: "003_catalog_progress", file: path.join("db", "postgres", "0003_catalog_progress.sql") },
+  { name: "004_catalog_answers", file: path.join("db", "postgres", "0004_catalog_answers.sql") },
 ];
 
 function loadEnv() {

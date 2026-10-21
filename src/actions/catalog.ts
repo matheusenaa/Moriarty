@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { todayStr } from "@/lib/dates";
 import { createMaterial } from "@/lib/repo/materials";
-import { getCollectionWithItems, getItem, setItemProgress, type CatalogProgressState } from "@/lib/repo/catalog";
+import { getCollectionWithItems, getItem, setItemProgress, recordQuestionAnswer, type CatalogProgressState } from "@/lib/repo/catalog";
 import { createSubject, createTopic, listSubjects, getActiveGoal } from "@/lib/repo/planning";
 import { scheduleReview } from "@/lib/repo/reviews";
 
@@ -122,4 +122,29 @@ export async function setCatalogItemProgressAction(formData: FormData): Promise<
 
   revalidatePath("/biblioteca/concursos");
   revalidatePath(`/biblioteca/concursos/${String(formData.get("slug") ?? "")}`);
+}
+
+/**
+ * Registra a resposta de uma questão de treino da trilha.
+ * O gabarito é conferido NO SERVIDOR (a partir do item), nunca confiando no
+ * cliente. Atualiza o último resultado e incrementa o contador de tentativas.
+ */
+export async function answerCatalogQuestionAction(input: {
+  itemId: string;
+  chosenIndex: number;
+}): Promise<void> {
+  const user = await requireUser();
+  const item = await getItem(input.itemId);
+  if (!item || item.kind !== "questao" || item.correct_index === null) return;
+  if (!Number.isInteger(input.chosenIndex) || input.chosenIndex < 0) return;
+
+  await recordQuestionAnswer(
+    user.id,
+    item.id,
+    input.chosenIndex,
+    input.chosenIndex === item.correct_index,
+  );
+
+  revalidatePath("/desempenho");
+  revalidatePath("/biblioteca/concursos");
 }

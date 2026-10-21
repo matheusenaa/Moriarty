@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Badge } from "@/components/Badge";
-import { saveCatalogItemAction, scheduleCatalogItemReviewAction } from "@/actions/catalog";
+import {
+  answerCatalogQuestionAction,
+  saveCatalogItemAction,
+  scheduleCatalogItemReviewAction,
+} from "@/actions/catalog";
 
 export type QuizItemView = {
   id: string;
@@ -14,15 +18,47 @@ export type QuizItemView = {
   originNote: string;
 };
 
-export function CatalogQuestion({ item }: { item: QuizItemView }) {
+export type PreviousResult = { isCorrect: boolean; attempts: number };
+
+export function CatalogQuestion({
+  item,
+  previous = null,
+}: {
+  item: QuizItemView;
+  previous?: PreviousResult | null;
+}) {
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function reveal() {
+    if (selected === null) return;
+    setRevealed(true);
+    const chosen = selected;
+    startTransition(() => {
+      void answerCatalogQuestionAction({ itemId: item.id, chosenIndex: chosen });
+    });
+  }
+
+  function retry() {
+    setSelected(null);
+    setRevealed(false);
+  }
+
+  const gotItRight = revealed && selected === item.correctIndex;
 
   return (
-    <div className="rounded-md border border-white/10 p-3">
+    <div id={`questao-${item.id}`} className="rounded-md border border-white/10 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium text-pergaminho">{item.title}</p>
-        <Badge tone="latiao">autoral · não oficial</Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {previous ? (
+            <Badge tone={previous.isCorrect ? "petroleo" : "alerta"}>
+              {previous.isCorrect ? "acertou antes" : "errou antes"} · {previous.attempts}x
+            </Badge>
+          ) : null}
+          <Badge tone="latiao">autoral · não oficial</Badge>
+        </div>
       </div>
       <p className="mt-2 text-sm text-pergaminho/90">{item.statement}</p>
       <ul className="mt-3 space-y-1.5">
@@ -57,16 +93,31 @@ export function CatalogQuestion({ item }: { item: QuizItemView }) {
         {!revealed ? (
           <button
             type="button"
-            onClick={() => setRevealed(true)}
-            disabled={selected === null}
+            onClick={reveal}
+            disabled={selected === null || pending}
             className="rounded-md border border-latao/40 px-3 py-1.5 text-latao disabled:opacity-40"
           >
-            Ver gabarito e explicação
+            {pending ? "Registrando..." : "Ver gabarito e explicação"}
           </button>
         ) : (
-          <span className="text-cinza">
-            Gabarito: <strong className="text-petroleo-claro">{String.fromCharCode(65 + item.correctIndex)}</strong>
-          </span>
+          <>
+            <span className="text-cinza">
+              Gabarito:{" "}
+              <strong className="text-petroleo-claro">
+                {String.fromCharCode(65 + item.correctIndex)}
+              </strong>
+            </span>
+            <Badge tone={gotItRight ? "petroleo" : "alerta"}>
+              {gotItRight ? "você acertou" : "você errou"}
+            </Badge>
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-md border border-white/10 px-3 py-1.5 text-cinza hover:bg-white/5"
+            >
+              responder de novo
+            </button>
+          </>
         )}
         <span className="text-cinza-escuro">{item.originNote}</span>
       </div>

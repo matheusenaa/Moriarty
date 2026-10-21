@@ -221,3 +221,159 @@ export async function collectionProgressCounts(
   );
   return { lido: Number(row?.lido ?? 0), dominado: Number(row?.dominado ?? 0) };
 }
+
+// ---------------------------------------------------------------------------
+// Respostas às questões de treino das trilhas (dado PESSOAL).
+// Guarda o último resultado por questão + número de tentativas.
+// ---------------------------------------------------------------------------
+
+export type QuestionResult = { isCorrect: boolean; attempts: number; chosenIndex: number };
+
+export type CatalogQuestionStat = {
+  slug: string;
+  title: string;
+  answered: number;
+  correct: number;
+  total: number;
+};
+
+export type MissedQuestion = {
+  itemId: string;
+  title: string;
+  attempts: number;
+  updatedAt: string;
+  collectionSlug: string;
+  collectionTitle: string;
+};
+
+/**
+ * Grava (ou atualiza) o último resultado do usuário numa questão de treino.
+ * O gabarito é sempre conferido no servidor a partir do item, nunca do cliente.
+ */
+export async function recordQuestionAnswer(
+  userId: string,
+  itemId: string,
+  chosenIndex: number,
+  isCorrect: boolean,
+): Promise<void> {
+  const now = nowIso();
+  await execute(
+    `INSERT INTO catalog_answers (id, user_id, item_id, chosen_index, is_correct, attempts, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, 1, $6, $7)
+     ON CONFLICT(user_id, item_id) DO UPDATE SET
+       chosen_index = excluded.chosen_index,
+       is_correct = excluded.is_correct,
+       attempts = catalog_answers.attempts + 1,
+       updated_at = excluded.updated_at`,
+    [uid(), userId, itemId, chosenIndex, isCorrect ? 1 : 0, now, now],
+  );
+}
+
+/** Mapa item_id → último resultado, restrito aos itens informados. */
+export async function getUserQuestionResults(
+  userId: string,
+  itemIds: string[],
+): Promise<Record<string, QuestionResult>> {
+  if (itemIds.length === 0) return {};
+  const rows = await query<{
+    item_id: string;
+    is_correct: number;
+    attempts: number;
+    chosen_index: number;
+  }>(
+    `SELECT item_id, is_correct, attempts, chosen_index FROM catalog_answers
+      WHERE user_id = $1 AND item_id IN (${itemIds.map((_, i) => `$${i + 2}`).join(",")})`,
+    [userId, ...itemIds],
+  );
+  const out: Record<string, QuestionResult> = {};
+  for (const r of rows) {
+    out[r.item_id] = {
+      isCorrect: r.is_correct === 1,
+      attempts: Number(r.attempts),
+      chosenIndex: Number(r.chosen_index),
+    };
+  }
+  return out;
+}
+
+/** Contagem de questões respondidas/acertadas numa trilha específica. */
+export async function collectionQuestionStats(
+  userId: string,
+  collectionId: string,
+): Promise<{ answered: number; correct: number; total: number }> {
+  const row = await queryOne<{ answered: string | null; correct: string | null; total: string }>(
+    `SELECT
+       COUNT(ca.id) AS answered,
+       COALESCE(SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END), 0) AS correct,
+       COUNT(ci.id) AS total
+     FROM catalog_items ci
+     LEFT JOIN catalog_answers ca ON ca.item_id = ci.id AND ca.user_id = $1
+     WHERE ci.collection_id = $2 AND ci.kind = 'questao'`,
+    [userId, collectionId],
+  );
+  return {
+    answered: Number(row?.answered ?? 0),
+    correct: Number(row?.correct ?? 0),
+    total: Number(row?.total ?? 0),
+  };
+}
+
+/** Estatísticas por trilha com pelo menos uma questão respondida. */
+export async function catalogQuestionStats(userId: string): Promise<CatalogQuestionStat[]> {
+  const rows = await query<{
+    slug: string;
+    title: string;
+    answered: string;
+    correct: string;
+    total: string;
+  }>(
+    `SELECT cc.slug, cc.title,
+            COUNT(ca.id) AS answered,
+            COALESCE(SUM(CASE WHEN ca.is_correct = 1 THEN 1 ELSE 0 END), 0) AS correct,
+            COUNT(ci.id) AS total
+       FROM catalog_collections cc
+       JOIN catalog_items ci ON ci.collection_id = cc.id AND ci.kind = 'questao'
+       LEFT JOIN catalog_answers ca ON ca.item_id = ci.id AND ca.user_id = $1
+      GROUP BY cc.id, cc.slug, cc.title
+     HAVING COUNT(ca.id) > 0
+      ORDER BY cc.title`,
+    [userId],
+  );
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    answered: Number(r.answered),
+    correct: Number(r.correct),
+    total: Number(r.total),
+  }));
+}
+
+/** Questões respondidas erradas por último (para revisão), mais recentes primeiro. */
+export async function listMissedQuestions(userId: string, limit = 10): Promise<MissedQuestion[]> {
+  const rows = await query<{
+    item_id: string;
+    title: string;
+    attempts: number;
+    updated_at: string;
+    slug: string;
+    collection_title: string;
+  }>(
+    `SELECT ca.item_id, ci.title, ca.attempts, ca.updated_at,
+            cc.slug, cc.title AS collection_title
+       FROM catalog_answers ca
+       JOIN catalog_items ci ON ci.id = ca.item_id
+       JOIN catalog_collections cc ON cc.id = ci.collection_id
+      WHERE ca.user_id = $1 AND ca.is_correct = 0
+      ORDER BY ca.updated_at DESC
+      LIMIT $2`,
+    [userId, limit],
+  );
+  return rows.map((r) => ({
+    itemId: r.item_id,
+    title: r.title,
+    attempts: Number(r.attempts),
+    updatedAt: r.updated_at,
+    collectionSlug: r.slug,
+    collectionTitle: r.collection_title,
+  }));
+}

@@ -12,6 +12,7 @@ import {
   totals,
 } from "@/lib/repo/stats";
 import { listSubjects } from "@/lib/repo/planning";
+import { catalogQuestionStats, listMissedQuestions } from "@/lib/repo/catalog";
 import { Card, CardTitle, CardDescription } from "@/components/Card";
 import { EmptyState } from "@/components/Feedback";
 import { StudyChart } from "@/components/StudyChart";
@@ -39,8 +40,18 @@ export default async function DesempenhoPage({
   const subjects = await listSubjects(user.id);
   const nameOf = (id: string | null) => subjects.find((s) => s.id === id)?.name ?? "Sem matéria";
 
+  const catalogStats = await catalogQuestionStats(user.id);
+  const missed = await listMissedQuestions(user.id, 8);
+  const catalogAnswered = catalogStats.reduce((sum, s) => sum + s.answered, 0);
+  const catalogCorrect = catalogStats.reduce((sum, s) => sum + s.correct, 0);
+  const catalogAccuracy =
+    catalogAnswered > 0 ? Math.round((catalogCorrect / catalogAnswered) * 100) : 0;
+
   const hasData =
-    minutes.some((d) => d.minutes > 0) || accuracy.some((a) => a.total > 0) || trend.length > 0;
+    minutes.some((d) => d.minutes > 0) ||
+    accuracy.some((a) => a.total > 0) ||
+    trend.length > 0 ||
+    catalogAnswered > 0;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -134,6 +145,55 @@ export default async function DesempenhoPage({
                 detail: `${a.correct}/${a.total}`,
               }))}
           />
+        </Card>
+      ) : null}
+
+      {catalogAnswered > 0 ? (
+        <Card>
+          <CardTitle>Questões de treino das trilhas</CardTitle>
+          <CardDescription>
+            {catalogAnswered} questão(ões) respondida(s) · {catalogCorrect} acerto(s) ·{" "}
+            {catalogAccuracy}% de acerto. Considera o seu último resultado em cada questão.
+          </CardDescription>
+          <ul className="mt-3 space-y-2">
+            {catalogStats.map((s) => {
+              const pct = s.answered > 0 ? Math.round((s.correct / s.answered) * 100) : 0;
+              return (
+                <li key={s.slug} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <a href={`/biblioteca/concursos/${s.slug}`} className="text-latao underline">
+                    {s.title}
+                  </a>
+                  <span className="text-cinza">
+                    {s.correct}/{s.answered} ({pct}%) · {s.answered} de {s.total} respondidas
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : null}
+
+      {missed.length > 0 ? (
+        <Card>
+          <CardTitle>Questões que você errou</CardTitle>
+          <CardDescription>
+            Reforce estes pontos; o gabarito e a explicação estão na trilha.
+          </CardDescription>
+          <ul className="mt-3 space-y-2">
+            {missed.map((m) => (
+              <li key={m.itemId} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <a
+                  href={`/biblioteca/concursos/${m.collectionSlug}#questao-${m.itemId}`}
+                  className="text-latao underline"
+                >
+                  {m.title}
+                </a>
+                <span className="text-cinza">
+                  {m.collectionTitle} · {m.attempts}x tentada(s)
+                </span>
+              </li>
+            ))}
+          </ul>
         </Card>
       ) : null}
 

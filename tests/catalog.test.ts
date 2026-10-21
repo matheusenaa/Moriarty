@@ -124,3 +124,69 @@ describe("seed idempotente", () => {
     expect(after).toBe(before);
   });
 });
+
+describe("respostas às questões de treino (progresso pessoal)", () => {
+  async function freshUser(): Promise<string> {
+    const profile = await import("@/lib/repo/profile");
+    const email = `q-${Date.now()}-${Math.random().toString(36).slice(2)}@teste.local`;
+    return profile.createUser(email, "hash");
+  }
+
+  it("registra acerto e agrega por trilha", async () => {
+    const userId = await freshUser();
+    const col = (await catalog.getCollectionBySlug("pmdf-cfo"))!;
+    const qs = await catalog.listItems(col.id, "questao");
+
+    await catalog.recordQuestionAnswer(userId, qs[0].id, qs[0].correct_index!, true);
+
+    const map = await catalog.getUserQuestionResults(userId, [qs[0].id]);
+    expect(map[qs[0].id]).toMatchObject({ isCorrect: true, attempts: 1 });
+
+    const stats = await catalog.collectionQuestionStats(userId, col.id);
+    expect(stats.answered).toBe(1);
+    expect(stats.correct).toBe(1);
+    expect(stats.total).toBeGreaterThanOrEqual(10);
+
+    const all = await catalog.catalogQuestionStats(userId);
+    const row = all.find((s) => s.slug === col.slug)!;
+    expect(row.answered).toBe(1);
+    expect(row.correct).toBe(1);
+  });
+
+  it("incrementa tentativas e mantém o último resultado", async () => {
+    const userId = await freshUser();
+    const col = (await catalog.getCollectionBySlug("pf-policial-2025"))!;
+    const q = (await catalog.listItems(col.id, "questao"))[0];
+    const options = JSON.parse(q.options_json) as string[];
+    const wrong = (q.correct_index! + 1) % options.length;
+
+    await catalog.recordQuestionAnswer(userId, q.id, wrong, false);
+    let map = await catalog.getUserQuestionResults(userId, [q.id]);
+    expect(map[q.id]).toMatchObject({ isCorrect: false, attempts: 1 });
+
+    await catalog.recordQuestionAnswer(userId, q.id, q.correct_index!, true);
+    map = await catalog.getUserQuestionResults(userId, [q.id]);
+    expect(map[q.id]).toMatchObject({ isCorrect: true, attempts: 2 });
+  });
+
+  it("lista só erradas na revisão e isola respostas entre usuários", async () => {
+    const userA = await freshUser();
+    const userB = await freshUser();
+    const col = (await catalog.getCollectionBySlug("prf-policial"))!;
+    const qs = await catalog.listItems(col.id, "questao");
+    const options = JSON.parse(qs[0].options_json) as string[];
+    const wrong = (qs[0].correct_index! + 1) % options.length;
+
+    await catalog.recordQuestionAnswer(userA, qs[0].id, wrong, false);
+    await catalog.recordQuestionAnswer(userA, qs[1].id, qs[1].correct_index!, true);
+
+    const missedA = await catalog.listMissedQuestions(userA);
+    expect(missedA.map((m) => m.itemId)).toEqual([qs[0].id]);
+
+    const missedB = await catalog.listMissedQuestions(userB);
+    expect(missedB).toHaveLength(0);
+
+    const mapB = await catalog.getUserQuestionResults(userB, [qs[0].id]);
+    expect(mapB[qs[0].id]).toBeUndefined();
+  });
+});
