@@ -1,4 +1,4 @@
-import { getDb, nowIso, uid } from "../db";
+import { execute, nowIso, query, queryOne, uid, withTransaction } from "../db";
 
 export type GoalRow = {
   id: string;
@@ -52,30 +52,22 @@ export type SessionRow = {
 
 // ---------- Objetivos ----------
 
-export function listGoals(userId: string): GoalRow[] {
-  return getDb()
-    .prepare("SELECT * FROM study_goals WHERE user_id = ? ORDER BY created_at DESC")
-    .all(userId) as GoalRow[];
+export function listGoals(userId: string): Promise<GoalRow[]> {
+  return query<GoalRow>("SELECT * FROM study_goals WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
 }
 
-export function getGoal(userId: string, id: string): GoalRow | null {
-  const db = getDb();
-  return (
-    (db.prepare("SELECT * FROM study_goals WHERE id = ? AND user_id = ?").get(id, userId) as GoalRow) ??
-    null
+export function getGoal(userId: string, id: string): Promise<GoalRow | null> {
+  return queryOne<GoalRow>("SELECT * FROM study_goals WHERE id = $1 AND user_id = $2", [id, userId]);
+}
+
+export function getActiveGoal(userId: string): Promise<GoalRow | null> {
+  return queryOne<GoalRow>(
+    "SELECT * FROM study_goals WHERE user_id = $1 AND status = 'ativo' ORDER BY created_at DESC LIMIT 1",
+    [userId],
   );
 }
 
-export function getActiveGoal(userId: string): GoalRow | null {
-  const db = getDb();
-  return (
-    (db
-      .prepare("SELECT * FROM study_goals WHERE user_id = ? AND status = 'ativo' ORDER BY created_at DESC LIMIT 1")
-      .get(userId) as GoalRow) ?? null
-  );
-}
-
-export function createGoal(
+export async function createGoal(
   userId: string,
   data: {
     title: string;
@@ -87,15 +79,13 @@ export function createGoal(
     reserveReviews: boolean;
     reserveSimulated: boolean;
   },
-): string {
+): Promise<string> {
   const id = uid();
-  getDb()
-    .prepare(
-      `INSERT INTO study_goals
-        (id, user_id, title, exam_name, exam_date, weekly_hours_target, session_minutes, start_date, reserve_reviews, reserve_simulated, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  await execute(
+    `INSERT INTO study_goals
+      (id, user_id, title, exam_name, exam_date, weekly_hours_target, session_minutes, start_date, reserve_reviews, reserve_simulated, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [
       id,
       userId,
       data.title,
@@ -107,11 +97,12 @@ export function createGoal(
       data.reserveReviews ? 1 : 0,
       data.reserveSimulated ? 1 : 0,
       nowIso(),
-    );
+    ],
+  );
   return id;
 }
 
-export function updateGoal(
+export async function updateGoal(
   userId: string,
   id: string,
   data: Partial<{
@@ -124,16 +115,14 @@ export function updateGoal(
     reserveReviews: boolean;
     reserveSimulated: boolean;
   }>,
-): boolean {
-  const current = getGoal(userId, id);
+): Promise<boolean> {
+  const current = await getGoal(userId, id);
   if (!current) return false;
-  getDb()
-    .prepare(
-      `UPDATE study_goals SET title = ?, exam_name = ?, exam_date = ?, status = ?,
-        weekly_hours_target = ?, session_minutes = ?, reserve_reviews = ?, reserve_simulated = ?
-       WHERE id = ? AND user_id = ?`,
-    )
-    .run(
+  await execute(
+    `UPDATE study_goals SET title = $1, exam_name = $2, exam_date = $3, status = $4,
+      weekly_hours_target = $5, session_minutes = $6, reserve_reviews = $7, reserve_simulated = $8
+     WHERE id = $9 AND user_id = $10`,
+    [
       data.title ?? current.title,
       data.examName ?? current.exam_name,
       data.examDate !== undefined ? data.examDate : current.exam_date,
@@ -144,55 +133,47 @@ export function updateGoal(
       (data.reserveSimulated ?? current.reserve_simulated === 1) ? 1 : 0,
       id,
       userId,
-    );
+    ],
+  );
   return true;
 }
 
 // ---------- Matérias e tópicos ----------
 
-export function listSubjects(userId: string, includeArchived = false): SubjectRow[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `SELECT * FROM subjects WHERE user_id = ? ${includeArchived ? "" : "AND archived = 0"} ORDER BY name COLLATE NOCASE`,
-    )
-    .all(userId) as SubjectRow[];
-}
-
-export function getSubject(userId: string, id: string): SubjectRow | null {
-  const db = getDb();
-  return (
-    (db.prepare("SELECT * FROM subjects WHERE id = ? AND user_id = ?").get(id, userId) as SubjectRow) ??
-    null
+export function listSubjects(userId: string, includeArchived = false): Promise<SubjectRow[]> {
+  return query<SubjectRow>(
+    `SELECT * FROM subjects WHERE user_id = $1 ${includeArchived ? "" : "AND archived = 0"} ORDER BY lower(name)`,
+    [userId],
   );
 }
 
-export function createSubject(
+export function getSubject(userId: string, id: string): Promise<SubjectRow | null> {
+  return queryOne<SubjectRow>("SELECT * FROM subjects WHERE id = $1 AND user_id = $2", [id, userId]);
+}
+
+export async function createSubject(
   userId: string,
   data: { name: string; priority: number; mastery: number; color: string; goalId: string | null },
-): string {
+): Promise<string> {
   const id = uid();
-  getDb()
-    .prepare(
-      `INSERT INTO subjects (id, user_id, goal_id, name, priority, mastery, color, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(id, userId, data.goalId, data.name, data.priority, data.mastery, data.color, nowIso());
+  await execute(
+    `INSERT INTO subjects (id, user_id, goal_id, name, priority, mastery, color, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [id, userId, data.goalId, data.name, data.priority, data.mastery, data.color, nowIso()],
+  );
   return id;
 }
 
-export function updateSubject(
+export async function updateSubject(
   userId: string,
   id: string,
   data: Partial<{ name: string; priority: number; mastery: number; color: string; archived: boolean }>,
-): boolean {
-  const current = getSubject(userId, id);
+): Promise<boolean> {
+  const current = await getSubject(userId, id);
   if (!current) return false;
-  getDb()
-    .prepare(
-      "UPDATE subjects SET name = ?, priority = ?, mastery = ?, color = ?, archived = ? WHERE id = ? AND user_id = ?",
-    )
-    .run(
+  await execute(
+    "UPDATE subjects SET name = $1, priority = $2, mastery = $3, color = $4, archived = $5 WHERE id = $6 AND user_id = $7",
+    [
       data.name ?? current.name,
       data.priority ?? current.priority,
       data.mastery ?? current.mastery,
@@ -200,91 +181,99 @@ export function updateSubject(
       (data.archived ?? current.archived === 1) ? 1 : 0,
       id,
       userId,
-    );
+    ],
+  );
   return true;
 }
 
-export function listTopics(userId: string, subjectId: string): TopicRow[] {
-  return getDb()
-    .prepare("SELECT * FROM topics WHERE user_id = ? AND subject_id = ? AND archived = 0 ORDER BY name COLLATE NOCASE")
-    .all(userId, subjectId) as TopicRow[];
+export function listTopics(userId: string, subjectId: string): Promise<TopicRow[]> {
+  return query<TopicRow>(
+    "SELECT * FROM topics WHERE user_id = $1 AND subject_id = $2 AND archived = 0 ORDER BY lower(name)",
+    [userId, subjectId],
+  );
 }
 
-export function createTopic(userId: string, subjectId: string, name: string): string | null {
-  const subject = getSubject(userId, subjectId);
+export async function createTopic(
+  userId: string,
+  subjectId: string,
+  name: string,
+): Promise<string | null> {
+  const subject = await getSubject(userId, subjectId);
   if (!subject) return null;
   const id = uid();
-  getDb()
-    .prepare("INSERT INTO topics (id, user_id, subject_id, name, created_at) VALUES (?, ?, ?, ?, ?)")
-    .run(id, userId, subjectId, name, nowIso());
+  await execute("INSERT INTO topics (id, user_id, subject_id, name, created_at) VALUES ($1, $2, $3, $4, $5)", [
+    id,
+    userId,
+    subjectId,
+    name,
+    nowIso(),
+  ]);
   return id;
 }
 
-export function deleteTopic(userId: string, id: string): boolean {
-  return (
-    getDb().prepare("UPDATE topics SET archived = 1 WHERE id = ? AND user_id = ?").run(id, userId).changes > 0
-  );
+export async function deleteTopic(userId: string, id: string): Promise<boolean> {
+  return (await execute("UPDATE topics SET archived = 1 WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
 }
 
 // ---------- Disponibilidade ----------
 
 export type SlotRow = { id: string; weekday: number; start_minute: number; end_minute: number };
 
-export function listAvailability(userId: string): SlotRow[] {
-  return getDb()
-    .prepare("SELECT id, weekday, start_minute, end_minute FROM availability_slots WHERE user_id = ?")
-    .all(userId) as SlotRow[];
+export function listAvailability(userId: string): Promise<SlotRow[]> {
+  return query<SlotRow>(
+    "SELECT id, weekday, start_minute, end_minute FROM availability_slots WHERE user_id = $1",
+    [userId],
+  );
 }
 
-export function replaceAvailability(userId: string, slots: { weekday: number; startMinute: number; endMinute: number }[]): void {
-  const db = getDb();
-  db.transaction(() => {
-    db.prepare("DELETE FROM availability_slots WHERE user_id = ?").run(userId);
-    const ins = db.prepare(
-      "INSERT INTO availability_slots (id, user_id, weekday, start_minute, end_minute, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    );
+export async function replaceAvailability(
+  userId: string,
+  slots: { weekday: number; startMinute: number; endMinute: number }[],
+): Promise<void> {
+  await withTransaction(async (client) => {
+    await client.query("DELETE FROM availability_slots WHERE user_id = $1", [userId]);
     for (const s of slots) {
-      ins.run(uid(), userId, s.weekday, s.startMinute, s.endMinute, nowIso());
+      await client.query(
+        "INSERT INTO availability_slots (id, user_id, weekday, start_minute, end_minute, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+        [uid(), userId, s.weekday, s.startMinute, s.endMinute, nowIso()],
+      );
     }
-  })();
+  });
 }
 
-export function listUnavailableDates(userId: string): string[] {
-  const rows = getDb()
-    .prepare("SELECT date FROM unavailable_dates WHERE user_id = ? ORDER BY date")
-    .all(userId) as { date: string }[];
+export async function listUnavailableDates(userId: string): Promise<string[]> {
+  const rows = await query<{ date: string }>(
+    "SELECT date FROM unavailable_dates WHERE user_id = $1 ORDER BY date",
+    [userId],
+  );
   return rows.map((r) => r.date);
 }
 
-export function addUnavailableDate(userId: string, date: string, label: string): void {
-  getDb()
-    .prepare(
-      "INSERT OR IGNORE INTO unavailable_dates (id, user_id, date, label, created_at) VALUES (?, ?, ?, ?, ?)",
-    )
-    .run(uid(), userId, date, label, nowIso());
+export async function addUnavailableDate(userId: string, date: string, label: string): Promise<void> {
+  await execute(
+    "INSERT INTO unavailable_dates (id, user_id, date, label, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, date) DO NOTHING",
+    [uid(), userId, date, label, nowIso()],
+  );
 }
 
-export function removeUnavailableDate(userId: string, date: string): void {
-  getDb().prepare("DELETE FROM unavailable_dates WHERE user_id = ? AND date = ?").run(userId, date);
+export async function removeUnavailableDate(userId: string, date: string): Promise<void> {
+  await execute("DELETE FROM unavailable_dates WHERE user_id = $1 AND date = $2", [userId, date]);
 }
 
 // ---------- Sessões ----------
 
-export function listSessions(userId: string, from: string, to: string): SessionRow[] {
-  return getDb()
-    .prepare("SELECT * FROM study_sessions WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date, start_minute")
-    .all(userId, from, to) as SessionRow[];
-}
-
-export function getSession(userId: string, id: string): SessionRow | null {
-  const db = getDb();
-  return (
-    (db.prepare("SELECT * FROM study_sessions WHERE id = ? AND user_id = ?").get(id, userId) as SessionRow) ??
-    null
+export function listSessions(userId: string, from: string, to: string): Promise<SessionRow[]> {
+  return query<SessionRow>(
+    "SELECT * FROM study_sessions WHERE user_id = $1 AND date >= $2 AND date <= $3 ORDER BY date, start_minute",
+    [userId, from, to],
   );
 }
 
-export function createSession(
+export function getSession(userId: string, id: string): Promise<SessionRow | null> {
+  return queryOne<SessionRow>("SELECT * FROM study_sessions WHERE id = $1 AND user_id = $2", [id, userId]);
+}
+
+export async function createSession(
   userId: string,
   data: {
     goalId: string | null;
@@ -297,16 +286,14 @@ export function createSession(
     kind: string;
     notes?: string;
   },
-): string {
+): Promise<string> {
   const id = uid();
   const now = nowIso();
-  getDb()
-    .prepare(
-      `INSERT INTO study_sessions
-        (id, user_id, goal_id, schedule_id, subject_id, topic_id, date, start_minute, planned_minutes, actual_minutes, kind, status, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'planejada', ?, ?, ?)`,
-    )
-    .run(
+  await execute(
+    `INSERT INTO study_sessions
+      (id, user_id, goal_id, schedule_id, subject_id, topic_id, date, start_minute, planned_minutes, actual_minutes, kind, status, notes, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10, 'planejada', $11, $12, $13)`,
+    [
       id,
       userId,
       data.goalId,
@@ -320,11 +307,12 @@ export function createSession(
       data.notes ?? "",
       now,
       now,
-    );
+    ],
+  );
   return id;
 }
 
-export function updateSession(
+export async function updateSession(
   userId: string,
   id: string,
   data: Partial<{
@@ -337,16 +325,14 @@ export function updateSession(
     subjectId: string | null;
     topicId: string | null;
   }>,
-): SessionRow | null {
-  const current = getSession(userId, id);
+): Promise<SessionRow | null> {
+  const current = await getSession(userId, id);
   if (!current) return null;
-  getDb()
-    .prepare(
-      `UPDATE study_sessions SET date = ?, start_minute = ?, planned_minutes = ?, actual_minutes = ?,
-        status = ?, notes = ?, subject_id = ?, topic_id = ?, updated_at = ?
-       WHERE id = ? AND user_id = ?`,
-    )
-    .run(
+  await execute(
+    `UPDATE study_sessions SET date = $1, start_minute = $2, planned_minutes = $3, actual_minutes = $4,
+      status = $5, notes = $6, subject_id = $7, topic_id = $8, updated_at = $9
+     WHERE id = $10 AND user_id = $11`,
+    [
       data.date ?? current.date,
       data.startMinute ?? current.start_minute,
       data.plannedMinutes ?? current.planned_minutes,
@@ -358,37 +344,39 @@ export function updateSession(
       nowIso(),
       id,
       userId,
-    );
+    ],
+  );
   return getSession(userId, id);
 }
 
-export function deleteSession(userId: string, id: string): boolean {
-  return getDb().prepare("DELETE FROM study_sessions WHERE id = ? AND user_id = ?").run(id, userId).changes > 0;
+export async function deleteSession(userId: string, id: string): Promise<boolean> {
+  return (await execute("DELETE FROM study_sessions WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
 }
 
-export function saveSchedule(
+export async function saveSchedule(
   userId: string,
   goalId: string,
   weekStart: string,
   source: string,
   explanation: string,
-): string {
-  const db = getDb();
-  const existing = db
-    .prepare("SELECT id FROM schedules WHERE user_id = ? AND goal_id = ? AND week_start = ?")
-    .get(userId, goalId, weekStart) as { id: string } | undefined;
+): Promise<string> {
+  const existing = await queryOne<{ id: string }>(
+    "SELECT id FROM schedules WHERE user_id = $1 AND goal_id = $2 AND week_start = $3",
+    [userId, goalId, weekStart],
+  );
   const id = existing?.id ?? uid();
   if (existing) {
-    db.prepare("UPDATE schedules SET source = ?, explanation = ?, created_at = ? WHERE id = ?").run(
+    await execute("UPDATE schedules SET source = $1, explanation = $2, created_at = $3 WHERE id = $4", [
       source,
       explanation,
       nowIso(),
       id,
-    );
+    ]);
   } else {
-    db.prepare(
-      "INSERT INTO schedules (id, user_id, goal_id, week_start, source, explanation, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    ).run(id, userId, goalId, weekStart, source, explanation, nowIso());
+    await execute(
+      "INSERT INTO schedules (id, user_id, goal_id, week_start, source, explanation, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [id, userId, goalId, weekStart, source, explanation, nowIso()],
+    );
   }
   return id;
 }

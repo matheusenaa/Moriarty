@@ -19,7 +19,7 @@ export default async function ResultadoSimuladoPage({
   const report = await attemptReport(user.id, attemptId);
   if (!report || !report.attempt.finished_at) notFound();
 
-  const subjects = listSubjects(user.id);
+  const subjects = await listSubjects(user.id);
   const subjectName = (id: string | null) => subjects.find((s) => s.id === id)?.name ?? "Sem matéria";
   const pct = accuracyPct(report.graded.correct, report.graded.total);
 

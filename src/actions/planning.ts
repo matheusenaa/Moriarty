@@ -63,7 +63,7 @@ export async function saveGoalAction(_prev: ActionState, formData: FormData): Pr
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const id = String(formData.get("id") ?? "");
   if (id) {
-    const updated = updateGoal(user.id, id, {
+    const updated = await updateGoal(user.id, id, {
       title: parsed.data.title,
       examName: parsed.data.examName ?? "",
       examDate: parsed.data.examDate,
@@ -74,7 +74,7 @@ export async function saveGoalAction(_prev: ActionState, formData: FormData): Pr
     });
     if (!updated) return { ok: false, error: "Objetivo não encontrado." };
   } else {
-    createGoal(user.id, {
+    await createGoal(user.id, {
       title: parsed.data.title,
       examName: parsed.data.examName ?? "",
       examDate: parsed.data.examDate,
@@ -106,11 +106,11 @@ export async function saveSubjectAction(_prev: ActionState, formData: FormData):
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const id = String(formData.get("id") ?? "");
-  const goal = getActiveGoal(user.id);
+  const goal = await getActiveGoal(user.id);
   if (id) {
-    if (!updateSubject(user.id, id, parsed.data)) return { ok: false, error: "Matéria não encontrada." };
+    if (!(await updateSubject(user.id, id, parsed.data))) return { ok: false, error: "Matéria não encontrada." };
   } else {
-    createSubject(user.id, { ...parsed.data, goalId: goal?.id ?? null });
+    await createSubject(user.id, { ...parsed.data, goalId: goal?.id ?? null });
   }
   revalidatePath("/materias");
   revalidatePath("/plano");
@@ -120,7 +120,7 @@ export async function saveSubjectAction(_prev: ActionState, formData: FormData):
 export async function archiveSubjectAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
-  updateSubject(user.id, id, { archived: true });
+  await updateSubject(user.id, id, { archived: true });
   revalidatePath("/materias");
 }
 
@@ -129,14 +129,14 @@ export async function saveTopicAction(_prev: ActionState, formData: FormData): P
   const name = String(formData.get("name") ?? "").trim();
   const subjectId = String(formData.get("subjectId") ?? "");
   if (name.length < 2) return { ok: false, error: "Informe o nome do tópico." };
-  if (!createTopic(user.id, subjectId, name)) return { ok: false, error: "Matéria não encontrada." };
+  if (!(await createTopic(user.id, subjectId, name))) return { ok: false, error: "Matéria não encontrada." };
   revalidatePath("/materias");
   return { ok: true, message: "Tópico adicionado." };
 }
 
 export async function deleteTopicAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  deleteTopic(user.id, String(formData.get("id") ?? ""));
+  await deleteTopic(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/materias");
 }
 
@@ -165,7 +165,7 @@ export async function saveAvailabilityAction(_prev: ActionState, formData: FormD
   }
   const parsed = availabilitySchema.safeParse({ slots, unavailableDates: [] });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  replaceAvailability(user.id, parsed.data.slots);
+  await replaceAvailability(user.id, parsed.data.slots);
   revalidatePath("/plano");
   return { ok: true, message: "Disponibilidade salva." };
 }
@@ -174,32 +174,32 @@ export async function addUnavailableDateAction(formData: FormData): Promise<void
   const user = await requireUser();
   const date = String(formData.get("date") ?? "");
   if (isValidDateStr(date)) {
-    addUnavailableDate(user.id, date, String(formData.get("label") ?? ""));
+    await addUnavailableDate(user.id, date, String(formData.get("label") ?? ""));
   }
   revalidatePath("/plano");
 }
 
 export async function removeUnavailableDateAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  removeUnavailableDate(user.id, String(formData.get("date") ?? ""));
+  await removeUnavailableDate(user.id, String(formData.get("date") ?? ""));
   revalidatePath("/plano");
 }
 
-function buildPlannerInput(userId: string, timezone: string): PlannerInput {
-  const goal = getActiveGoal(userId);
-  const subjects = listSubjects(userId).map((s) => ({
+async function buildPlannerInput(userId: string, timezone: string): Promise<PlannerInput> {
+  const goal = await getActiveGoal(userId);
+  const subjects = (await listSubjects(userId)).map((s) => ({
     id: s.id,
     name: s.name,
     priority: s.priority,
     mastery: s.mastery,
   }));
-  const availability = listAvailability(userId).map((a) => ({
+  const availability = (await listAvailability(userId)).map((a) => ({
     weekday: a.weekday,
     startMinute: a.start_minute,
     endMinute: a.end_minute,
   }));
   const today = todayStr(timezone);
-  const existing = listSessions(userId, today, addDays(today, 30)).map((s) => ({
+  const existing = (await listSessions(userId, today, addDays(today, 30))).map((s) => ({
     date: s.date,
     startMinute: s.start_minute,
     plannedMinutes: s.planned_minutes,
@@ -213,7 +213,7 @@ function buildPlannerInput(userId: string, timezone: string): PlannerInput {
     weeklyHoursTarget: goal?.weekly_hours_target ?? 10,
     subjects,
     availability,
-    unavailableDates: listUnavailableDates(userId),
+    unavailableDates: await listUnavailableDates(userId),
     existing,
     reserveReviews: goal ? goal.reserve_reviews === 1 : true,
     reserveSimulated: goal ? goal.reserve_simulated === 1 : true,
@@ -230,13 +230,13 @@ export type PlanPreview = {
 
 export async function previewPlanAction(useAi: boolean): Promise<ActionState & { plan?: PlanPreview }> {
   const user = await requireUser();
-  const goal = getActiveGoal(user.id);
+  const goal = await getActiveGoal(user.id);
   if (!goal) return { ok: false, error: "Cadastre um objetivo de estudo antes de gerar o plano." };
-  const input = buildPlannerInput(user.id, user.timezone);
+  const input = await buildPlannerInput(user.id, user.timezone);
   const errors = validatePlannerInput(input);
   if (errors.length > 0) return { ok: false, error: errors[0] };
   const result = useAi ? await suggestSchedule(input) : { ...planSchedule(input), source: "deterministico" as const };
-  const names = new Map(listSubjects(user.id).map((s) => [s.id, s.name]));
+  const names = new Map((await listSubjects(user.id)).map((s) => [s.id, s.name]));
   return {
     ok: true,
     plan: {
@@ -269,7 +269,7 @@ const savePlanSchema = z.object({
 
 export async function savePlanAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const goal = getActiveGoal(user.id);
+  const goal = await getActiveGoal(user.id);
   if (!goal) return { ok: false, error: "Cadastre um objetivo antes de salvar o plano." };
   const parsed = savePlanSchema.safeParse({
     sessions: JSON.parse(String(formData.get("sessions") ?? "[]")),
@@ -283,7 +283,7 @@ export async function savePlanAction(_prev: ActionState, formData: FormData): Pr
   const dates = parsed.data.sessions.map((s) => s.date);
   const minDate = dates.reduce((a, b) => (a < b ? a : b));
   const maxDate = dates.reduce((a, b) => (a > b ? a : b));
-  const existing = listSessions(user.id, minDate, maxDate);
+  const existing = await listSessions(user.id, minDate, maxDate);
   const conflicts = parsed.data.sessions.filter((s) =>
     existing.some(
       (e) =>
@@ -300,11 +300,11 @@ export async function savePlanAction(_prev: ActionState, formData: FormData): Pr
   }
 
   const ws = weekStart(parsed.data.sessions[0].date);
-  const scheduleId = saveSchedule(user.id, goal.id, ws, parsed.data.source, parsed.data.explanation.slice(0, 2000));
+  const scheduleId = await saveSchedule(user.id, goal.id, ws, parsed.data.source, parsed.data.explanation.slice(0, 2000));
   for (const s of parsed.data.sessions) {
-    const subject = getSubject(user.id, s.subjectId);
+    const subject = await getSubject(user.id, s.subjectId);
     if (!subject) continue;
-    createSession(user.id, {
+    await createSession(user.id, {
       goalId: goal.id,
       scheduleId,
       subjectId: s.subjectId,
@@ -316,7 +316,7 @@ export async function savePlanAction(_prev: ActionState, formData: FormData): Pr
       notes: s.reason,
     });
   }
-  generateDailyReminders(user.id, todayStr(user.timezone));
+  await generateDailyReminders(user.id, todayStr(user.timezone));
   revalidatePath("/plano");
   revalidatePath("/central");
   return { ok: true, message: `Plano salvo com ${parsed.data.sessions.length} sessão(ões).` };
@@ -344,8 +344,8 @@ export async function createSessionAction(_prev: ActionState, formData: FormData
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const startMinute = parseHHMM(parsed.data.start);
   if (startMinute === null) return { ok: false, error: "Horário de início inválido." };
-  const goal = getActiveGoal(user.id);
-  createSession(user.id, {
+  const goal = await getActiveGoal(user.id);
+  await createSession(user.id, {
     goalId: goal?.id ?? null,
     subjectId: parsed.data.subjectId || null,
     topicId: null,
@@ -370,10 +370,10 @@ export type CompleteSessionInput = {
 
 export async function completeSessionAction(input: CompleteSessionInput): Promise<ActionState> {
   const user = await requireUser();
-  const session = getSession(user.id, input.sessionId);
+  const session = await getSession(user.id, input.sessionId);
   if (!session) return { ok: false, error: "Sessão não encontrada." };
   const actual = Math.max(0, Math.min(1440, Math.round(input.actualMinutes)));
-  updateSession(user.id, input.sessionId, {
+  await updateSession(user.id, input.sessionId, {
     status: input.status,
     actualMinutes: actual,
     notes: input.notes?.slice(0, 1000) ?? session.notes,
@@ -381,13 +381,13 @@ export async function completeSessionAction(input: CompleteSessionInput): Promis
 
   let granted = 0;
   if (input.status === "concluida" || input.status === "parcial") {
-    granted += awardXp(user.id, "sessao_concluida", "study_sessions", input.sessionId);
+    granted += await awardXp(user.id, "sessao_concluida", "study_sessions", input.sessionId);
     // Revisões programadas a partir dos tópicos escolhidos (vence em 1 dia).
     const due = addDays(todayStr(user.timezone), 1);
     for (const title of input.reviewTitles.slice(0, 20)) {
       const clean = title.trim();
       if (clean.length < 2) continue;
-      scheduleReview(user.id, {
+      await scheduleReview(user.id, {
         title: clean,
         subjectId: session.subject_id,
         sourceType: "sessao",
@@ -396,7 +396,7 @@ export async function completeSessionAction(input: CompleteSessionInput): Promis
       });
     }
   }
-  checkCountAchievements(user.id);
+  await checkCountAchievements(user.id);
   revalidatePath("/central");
   revalidatePath("/plano");
   revalidatePath("/revisoes");
@@ -406,7 +406,7 @@ export async function completeSessionAction(input: CompleteSessionInput): Promis
 
 export async function deleteSessionAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  deleteSession(user.id, String(formData.get("id") ?? ""));
+  await deleteSession(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/plano");
   revalidatePath("/central");
 }
@@ -419,7 +419,7 @@ export async function rescheduleSessionAction(_prev: ActionState, formData: Form
   if (!isValidDateStr(date)) return { ok: false, error: "Data inválida." };
   const startMinute = parseHHMM(start);
   if (startMinute === null) return { ok: false, error: "Horário inválido." };
-  const updated = updateSession(user.id, id, { date, startMinute });
+  const updated = await updateSession(user.id, id, { date, startMinute });
   if (!updated) return { ok: false, error: "Sessão não encontrada." };
   revalidatePath("/plano");
   revalidatePath("/central");
@@ -438,9 +438,9 @@ export async function completeOnboardingAction(_prev: ActionState, formData: For
     .map((s) => s.trim())
     .filter((s) => s.length >= 2)
     .slice(0, 20);
-  const goal = getActiveGoal(user.id);
+  const goal = await getActiveGoal(user.id);
   for (const name of subjects) {
-    createSubject(user.id, { name, priority: 3, mastery: 2, color: "#c9a227", goalId: goal?.id ?? null });
+    await createSubject(user.id, { name, priority: 3, mastery: 2, color: "#c9a227", goalId: goal?.id ?? null });
   }
 
   const slotsRaw = String(formData.get("slots") ?? "[]");
@@ -451,12 +451,12 @@ export async function completeOnboardingAction(_prev: ActionState, formData: For
       endMinute: parseHHMM(s.end) ?? 0,
     }));
     const valid = slots.filter((s) => s.endMinute > s.startMinute);
-    if (valid.length > 0) replaceAvailability(user.id, valid);
+    if (valid.length > 0) await replaceAvailability(user.id, valid);
   } catch {
     // Slots inválidos não bloqueiam o onboarding; o usuário ajusta em Meu plano.
   }
 
-  markOnboarded(user.id);
+  await markOnboarded(user.id);
   revalidatePath("/central");
   revalidatePath("/plano");
   redirect("/central");

@@ -1,7 +1,5 @@
--- Moriarty — migração 003: progresso do usuário sobre o conteúdo de concursos.
--- SEPARAÇÃO DE RESPONSABILIDADES: o conteúdo de sistema (catalog_*) permanece
--- imutável e global; o progresso é dado do usuário e vive em tabela própria.
--- Nenhuma linha aqui altera catalog_items; apenas referencia item_id.
+-- Moriarty — migração 003 (PostgreSQL): progresso do usuário sobre o catálogo.
+-- Equivalente a db/migrations/003_catalog_progress.sql.
 
 CREATE TABLE IF NOT EXISTS catalog_progress (
   id TEXT PRIMARY KEY,

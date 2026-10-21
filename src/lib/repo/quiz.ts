@@ -1,4 +1,4 @@
-import { getDb, nowIso, uid } from "../db";
+import { execute, nowIso, query, queryOne, uid, withTransaction } from "../db";
 import type { QuestionForQuiz } from "../quiz";
 
 export type QuestionRow = {
@@ -37,7 +37,7 @@ export type AttemptRow = {
   duration_seconds: number;
 };
 
-export function createQuestion(
+export async function createQuestion(
   userId: string,
   data: {
     statement: string;
@@ -50,14 +50,12 @@ export function createQuestion(
     sourceName: string;
     origin: "autoral" | "ia" | "importada";
   },
-): string {
+): Promise<string> {
   const id = uid();
-  getDb()
-    .prepare(
-      `INSERT INTO questions (id, user_id, statement, type, options_json, correct_index, explanation, subject_id, difficulty, source_name, origin, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  await execute(
+    `INSERT INTO questions (id, user_id, statement, type, options_json, correct_index, explanation, subject_id, difficulty, source_name, origin, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [
       id,
       userId,
       data.statement,
@@ -70,34 +68,35 @@ export function createQuestion(
       data.sourceName,
       data.origin,
       nowIso(),
-    );
+    ],
+  );
   return id;
 }
 
-export function listQuestions(userId: string, subjectId?: string): QuestionRow[] {
-  const db = getDb();
+export function listQuestions(userId: string, subjectId?: string): Promise<QuestionRow[]> {
   if (subjectId) {
-    return db
-      .prepare("SELECT * FROM questions WHERE user_id = ? AND subject_id = ? ORDER BY created_at DESC LIMIT 500")
-      .all(userId, subjectId) as QuestionRow[];
+    return query<QuestionRow>(
+      "SELECT * FROM questions WHERE user_id = $1 AND subject_id = $2 ORDER BY created_at DESC LIMIT 500",
+      [userId, subjectId],
+    );
   }
-  return db.prepare("SELECT * FROM questions WHERE user_id = ? ORDER BY created_at DESC LIMIT 500").all(userId) as QuestionRow[];
-}
-
-export function getQuestion(userId: string, id: string): QuestionRow | null {
-  const db = getDb();
-  return (
-    (db.prepare("SELECT * FROM questions WHERE id = ? AND user_id = ?").get(id, userId) as QuestionRow) ??
-    null
+  return query<QuestionRow>(
+    "SELECT * FROM questions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 500",
+    [userId],
   );
 }
 
-export function deleteQuestion(userId: string, id: string): boolean {
-  return getDb().prepare("DELETE FROM questions WHERE id = ? AND user_id = ?").run(id, userId).changes > 0;
+export function getQuestion(userId: string, id: string): Promise<QuestionRow | null> {
+  return queryOne<QuestionRow>("SELECT * FROM questions WHERE id = $1 AND user_id = $2", [id, userId]);
 }
 
-export function countQuestions(userId: string): number {
-  return (getDb().prepare("SELECT COUNT(*) c FROM questions WHERE user_id = ?").get(userId) as { c: number }).c;
+export async function deleteQuestion(userId: string, id: string): Promise<boolean> {
+  return (await execute("DELETE FROM questions WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
+}
+
+export async function countQuestions(userId: string): Promise<number> {
+  const row = await queryOne<{ c: string }>("SELECT COUNT(*) c FROM questions WHERE user_id = $1", [userId]);
+  return Number(row?.c ?? 0);
 }
 
 export function toQuizQuestion(q: QuestionRow): QuestionForQuiz & { correctIndex: number } {
@@ -113,7 +112,7 @@ export function toQuizQuestion(q: QuestionRow): QuestionForQuiz & { correctIndex
   };
 }
 
-export function createQuiz(
+export async function createQuiz(
   userId: string,
   data: {
     title: string;
@@ -123,144 +122,141 @@ export function createQuiz(
     shuffle: boolean;
     questionIds: string[];
   },
-): string {
-  const db = getDb();
+): Promise<string> {
   const id = uid();
-  db.transaction(() => {
-    db.prepare(
-      "INSERT INTO quizzes (id, user_id, goal_id, title, mode, time_limit_seconds, shuffle, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    ).run(id, userId, data.goalId, data.title, data.mode, data.timeLimitSeconds, data.shuffle ? 1 : 0, nowIso());
-    const ins = db.prepare("INSERT INTO quiz_questions (quiz_id, question_id, position) VALUES (?, ?, ?)");
-    data.questionIds.forEach((qid, i) => ins.run(id, qid, i));
-  })();
+  await withTransaction(async (client) => {
+    await client.query(
+      "INSERT INTO quizzes (id, user_id, goal_id, title, mode, time_limit_seconds, shuffle, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [id, userId, data.goalId, data.title, data.mode, data.timeLimitSeconds, data.shuffle ? 1 : 0, nowIso()],
+    );
+    for (let i = 0; i < data.questionIds.length; i++) {
+      await client.query("INSERT INTO quiz_questions (quiz_id, question_id, position) VALUES ($1, $2, $3)", [
+        id,
+        data.questionIds[i],
+        i,
+      ]);
+    }
+  });
   return id;
 }
 
-export function getQuiz(userId: string, id: string): QuizRow | null {
-  const db = getDb();
-  return (db.prepare("SELECT * FROM quizzes WHERE id = ? AND user_id = ?").get(id, userId) as QuizRow) ?? null;
+export function getQuiz(userId: string, id: string): Promise<QuizRow | null> {
+  return queryOne<QuizRow>("SELECT * FROM quizzes WHERE id = $1 AND user_id = $2", [id, userId]);
 }
 
-export function listQuizzes(userId: string): (QuizRow & { attempts: number; best: number })[] {
-  return getDb()
-    .prepare(
-      `SELECT q.*,
-              (SELECT COUNT(*) FROM quiz_attempts a WHERE a.quiz_id = q.id) AS attempts,
-              (SELECT MAX(CASE WHEN a.total > 0 THEN a.correct * 100 / a.total ELSE 0 END)
-                 FROM quiz_attempts a WHERE a.quiz_id = q.id) AS best
-         FROM quizzes q WHERE q.user_id = ? ORDER BY q.created_at DESC LIMIT 100`,
-    )
-    .all(userId) as (QuizRow & { attempts: number; best: number })[];
+export async function listQuizzes(userId: string): Promise<(QuizRow & { attempts: number; best: number })[]> {
+  const rows = await query<QuizRow & { attempts: string; best: string | null }>(
+    `SELECT q.*,
+            (SELECT COUNT(*) FROM quiz_attempts a WHERE a.quiz_id = q.id) AS attempts,
+            (SELECT MAX(CASE WHEN a.total > 0 THEN a.correct * 100 / a.total ELSE 0 END)
+               FROM quiz_attempts a WHERE a.quiz_id = q.id) AS best
+       FROM quizzes q WHERE q.user_id = $1 ORDER BY q.created_at DESC LIMIT 100`,
+    [userId],
+  );
+  return rows.map((r) => ({ ...r, attempts: Number(r.attempts), best: Number(r.best ?? 0) }));
 }
 
-export function quizQuestionIds(quizId: string, userId: string): string[] {
-  const db = getDb();
-  const quiz = db.prepare("SELECT user_id FROM quizzes WHERE id = ?").get(quizId) as { user_id: string } | undefined;
+export async function quizQuestionIds(quizId: string, userId: string): Promise<string[]> {
+  const quiz = await queryOne<{ user_id: string }>("SELECT user_id FROM quizzes WHERE id = $1", [quizId]);
   if (!quiz || quiz.user_id !== userId) return [];
-  const rows = db
-    .prepare("SELECT question_id FROM quiz_questions WHERE quiz_id = ? ORDER BY position")
-    .all(quizId) as { question_id: string }[];
+  const rows = await query<{ question_id: string }>(
+    "SELECT question_id FROM quiz_questions WHERE quiz_id = $1 ORDER BY position",
+    [quizId],
+  );
   return rows.map((r) => r.question_id);
 }
 
-export function deleteQuiz(userId: string, id: string): boolean {
-  return getDb().prepare("DELETE FROM quizzes WHERE id = ? AND user_id = ?").run(id, userId).changes > 0;
+export async function deleteQuiz(userId: string, id: string): Promise<boolean> {
+  return (await execute("DELETE FROM quizzes WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
 }
 
-export function startAttempt(userId: string, quizId: string, total: number): string | null {
-  const quiz = getQuiz(userId, quizId);
+export async function startAttempt(userId: string, quizId: string, total: number): Promise<string | null> {
+  const quiz = await getQuiz(userId, quizId);
   if (!quiz) return null;
   const id = uid();
-  getDb()
-    .prepare(
-      "INSERT INTO quiz_attempts (id, user_id, quiz_id, started_at, total) VALUES (?, ?, ?, ?, ?)",
-    )
-    .run(id, userId, quizId, nowIso(), total);
+  await execute("INSERT INTO quiz_attempts (id, user_id, quiz_id, started_at, total) VALUES ($1, $2, $3, $4, $5)", [
+    id,
+    userId,
+    quizId,
+    nowIso(),
+    total,
+  ]);
   return id;
 }
 
-export function getAttempt(userId: string, id: string): AttemptRow | null {
-  const db = getDb();
-  return (db.prepare("SELECT * FROM quiz_attempts WHERE id = ? AND user_id = ?").get(id, userId) as AttemptRow) ?? null;
+export function getAttempt(userId: string, id: string): Promise<AttemptRow | null> {
+  return queryOne<AttemptRow>("SELECT * FROM quiz_attempts WHERE id = $1 AND user_id = $2", [id, userId]);
 }
 
-export function saveAnswer(
+export async function saveAnswer(
   userId: string,
   attemptId: string,
   questionId: string,
   chosenIndex: number | null,
   secondsSpent: number,
-): void {
-  const db = getDb();
-  const attempt = db.prepare("SELECT user_id FROM quiz_attempts WHERE id = ?").get(attemptId) as
-    | { user_id: string }
-    | undefined;
+): Promise<void> {
+  const attempt = await queryOne<{ user_id: string }>("SELECT user_id FROM quiz_attempts WHERE id = $1", [attemptId]);
   if (!attempt || attempt.user_id !== userId) return;
-  db.prepare(
+  await execute(
     `INSERT INTO quiz_answers (id, attempt_id, user_id, question_id, chosen_index, is_correct, seconds_spent)
-     VALUES (?, ?, ?, ?, ?, 0, ?)
+     VALUES ($1, $2, $3, $4, $5, 0, $6)
      ON CONFLICT (attempt_id, question_id) DO UPDATE SET chosen_index = excluded.chosen_index, seconds_spent = excluded.seconds_spent`,
-  ).run(uid(), attemptId, userId, questionId, chosenIndex, secondsSpent);
+    [uid(), attemptId, userId, questionId, chosenIndex, secondsSpent],
+  );
 }
 
 export type AnswerRow = { question_id: string; chosen_index: number | null; seconds_spent: number };
 
-export function listAnswers(userId: string, attemptId: string): AnswerRow[] {
-  return getDb()
-    .prepare("SELECT question_id, chosen_index, seconds_spent FROM quiz_answers WHERE attempt_id = ? AND user_id = ?")
-    .all(attemptId, userId) as AnswerRow[];
+export function listAnswers(userId: string, attemptId: string): Promise<AnswerRow[]> {
+  return query<AnswerRow>(
+    "SELECT question_id, chosen_index, seconds_spent FROM quiz_answers WHERE attempt_id = $1 AND user_id = $2",
+    [attemptId, userId],
+  );
 }
 
-export function finalizeAttempt(
+export async function finalizeAttempt(
   userId: string,
   attemptId: string,
   correct: number,
   answered: number,
   total: number,
   durationSeconds: number,
-): boolean {
-  const attempt = getAttempt(userId, attemptId);
+): Promise<boolean> {
+  const attempt = await getAttempt(userId, attemptId);
   if (!attempt || attempt.finished_at) return false;
-  const db = getDb();
-  db.transaction(() => {
-    db.prepare("UPDATE quiz_attempts SET finished_at = ?, correct = ?, answered = ?, total = ?, duration_seconds = ? WHERE id = ? AND user_id = ?").run(
-      nowIso(),
-      correct,
-      answered,
-      total,
-      durationSeconds,
-      attemptId,
-      userId,
+  await withTransaction(async (client) => {
+    await client.query(
+      "UPDATE quiz_attempts SET finished_at = $1, correct = $2, answered = $3, total = $4, duration_seconds = $5 WHERE id = $6 AND user_id = $7",
+      [nowIso(), correct, answered, total, durationSeconds, attemptId, userId],
     );
     // Marca precisão por questão para o relatório.
-    const rows = db
-      .prepare("SELECT question_id, chosen_index FROM quiz_answers WHERE attempt_id = ?")
-      .all(attemptId) as { question_id: string; chosen_index: number | null }[];
-    const correctMap = new Map(
-      (db.prepare("SELECT question_id, correct_index FROM quiz_answers qa JOIN questions q ON q.id = qa.question_id WHERE qa.attempt_id = ?").all(attemptId) as {
-        question_id: string;
-        correct_index: number;
-      }[]).map((r) => [r.question_id, r.correct_index]),
+    const { rows } = await client.query<{ question_id: string; chosen_index: number | null }>(
+      "SELECT question_id, chosen_index FROM quiz_answers WHERE attempt_id = $1",
+      [attemptId],
     );
+    const correctMapRows = await client.query<{ question_id: string; correct_index: number }>(
+      "SELECT question_id, correct_index FROM quiz_answers qa JOIN questions q ON q.id = qa.question_id WHERE qa.attempt_id = $1",
+      [attemptId],
+    );
+    const correctMap = new Map(correctMapRows.rows.map((r) => [r.question_id, r.correct_index]));
     for (const r of rows) {
       const isCorrect = r.chosen_index !== null && correctMap.get(r.question_id) === r.chosen_index ? 1 : 0;
-      db.prepare("UPDATE quiz_answers SET is_correct = ? WHERE attempt_id = ? AND question_id = ?").run(
+      await client.query("UPDATE quiz_answers SET is_correct = $1 WHERE attempt_id = $2 AND question_id = $3", [
         isCorrect,
         attemptId,
         r.question_id,
-      );
+      ]);
     }
-  })();
+  });
   return true;
 }
 
-export function listAttempts(userId: string, limit = 50): (AttemptRow & { title: string; mode: string })[] {
-  return getDb()
-    .prepare(
-      `SELECT a.*, q.title, q.mode
-         FROM quiz_attempts a JOIN quizzes q ON q.id = a.quiz_id
-        WHERE a.user_id = ? AND a.finished_at IS NOT NULL
-        ORDER BY a.finished_at DESC LIMIT ?`,
-    )
-    .all(userId, limit) as (AttemptRow & { title: string; mode: string })[];
+export function listAttempts(userId: string, limit = 50): Promise<(AttemptRow & { title: string; mode: string })[]> {
+  return query<AttemptRow & { title: string; mode: string }>(
+    `SELECT a.*, q.title, q.mode
+       FROM quiz_attempts a JOIN quizzes q ON q.id = a.quiz_id
+      WHERE a.user_id = $1 AND a.finished_at IS NOT NULL
+      ORDER BY a.finished_at DESC LIMIT $2`,
+    [userId, limit],
+  );
 }

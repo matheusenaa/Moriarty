@@ -10,8 +10,8 @@ import { Badge } from "@/components/Badge";
 export default async function MateriasPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
-  const subjects = listSubjects(user.id);
-  const goal = getActiveGoal(user.id);
+  const subjects = await listSubjects(user.id);
+  const goal = await getActiveGoal(user.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -34,9 +34,10 @@ export default async function MateriasPage() {
             <CardDescription>Nenhuma matéria cadastrada ainda. Comece pelo formulário acima.</CardDescription>
           </Card>
         ) : (
-          subjects.map((s) => {
-            const topics = listTopics(user.id, s.id);
-            return (
+          await Promise.all(
+            subjects.map(async (s) => {
+              const topics = await listTopics(user.id, s.id);
+              return (
               <Card key={s.id}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -86,8 +87,9 @@ export default async function MateriasPage() {
                   </div>
                 </details>
               </Card>
-            );
-          })
+              );
+            }),
+          )
         )}
       </div>
     </div>

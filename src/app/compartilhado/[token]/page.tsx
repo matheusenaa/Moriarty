@@ -18,7 +18,7 @@ export default async function CompartilhadoPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const material = getMaterialByToken(token);
+  const material = await getMaterialByToken(token);
   const user = await getCurrentUser();
 
   if (!material) {

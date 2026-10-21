@@ -20,20 +20,20 @@ export default async function CentralPage() {
   const today = todayStr(user.timezone);
   const weekAgo = addDays(today, -6);
 
-  const goal = getActiveGoal(user.id);
-  const todaySessions = listSessions(user.id, today, today);
-  const weekTotals = totals(user.id, weekAgo, today);
-  const todayMinutes = dailyMinutes(user.id, today, today)[0]?.minutes ?? 0;
-  const reviews = reviewQueue(user.id, today);
-  const stats = reviewStats(user.id, today);
-  const accuracy = questionAccuracyBySubject(user.id);
-  const streak = studyStreak(user.id, today);
-  const gamification = user.gamificationEnabled ? gamificationSummary(user.id, streak) : null;
+  const goal = await getActiveGoal(user.id);
+  const todaySessions = await listSessions(user.id, today, today);
+  const weekTotals = await totals(user.id, weekAgo, today);
+  const todayMinutes = (await dailyMinutes(user.id, today, today))[0]?.minutes ?? 0;
+  const reviews = await reviewQueue(user.id, today);
+  const stats = await reviewStats(user.id, today);
+  const accuracy = await questionAccuracyBySubject(user.id);
+  const streak = await studyStreak(user.id, today);
+  const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
   const progress = gamification ? progressToNextRank(gamification.xp) : null;
-  const subjects = listSubjects(user.id);
+  const subjects = await listSubjects(user.id);
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
-  const statusCount = sessionsByStatus(user.id, weekAgo, today);
+  const statusCount = await sessionsByStatus(user.id, weekAgo, today);
   const daysToExam = goal?.exam_date ? daysBetween(today, goal.exam_date) : null;
 
   return (

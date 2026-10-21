@@ -1,4 +1,4 @@
-import { getDb, nowIso, uid } from "../db";
+import { execute, nowIso, query, queryOne, uid } from "../db";
 
 export type CatalogCollectionRow = {
   id: string;
@@ -58,55 +58,49 @@ export const CATEGORY_LABEL: Record<string, string> = {
 };
 
 /** Lista as coleções do catálogo de sistema (visível a usuários autenticados). */
-export function listCollections(): CatalogCollectionRow[] {
-  return getDb()
-    .prepare("SELECT * FROM catalog_collections ORDER BY title")
-    .all() as CatalogCollectionRow[];
+export function listCollections(): Promise<CatalogCollectionRow[]> {
+  return query<CatalogCollectionRow>("SELECT * FROM catalog_collections ORDER BY title");
 }
 
-export function getCollectionBySlug(slug: string): CatalogCollectionRow | null {
-  const row = getDb()
-    .prepare("SELECT * FROM catalog_collections WHERE slug = ?")
-    .get(slug) as CatalogCollectionRow | undefined;
-  return row ?? null;
+export function getCollectionBySlug(slug: string): Promise<CatalogCollectionRow | null> {
+  return queryOne<CatalogCollectionRow>("SELECT * FROM catalog_collections WHERE slug = $1", [slug]);
 }
 
-export function listItems(collectionId: string, kind?: string): CatalogItemRow[] {
-  const db = getDb();
+export function listItems(collectionId: string, kind?: string): Promise<CatalogItemRow[]> {
   if (kind) {
-    return db
-      .prepare("SELECT * FROM catalog_items WHERE collection_id = ? AND kind = ? ORDER BY sort_order")
-      .all(collectionId, kind) as CatalogItemRow[];
+    return query<CatalogItemRow>(
+      "SELECT * FROM catalog_items WHERE collection_id = $1 AND kind = $2 ORDER BY sort_order",
+      [collectionId, kind],
+    );
   }
-  return db
-    .prepare("SELECT * FROM catalog_items WHERE collection_id = ? ORDER BY sort_order")
-    .all(collectionId) as CatalogItemRow[];
+  return query<CatalogItemRow>(
+    "SELECT * FROM catalog_items WHERE collection_id = $1 ORDER BY sort_order",
+    [collectionId],
+  );
 }
 
-export function getItem(id: string): CatalogItemRow | null {
-  const row = getDb().prepare("SELECT * FROM catalog_items WHERE id = ?").get(id) as
-    | CatalogItemRow
-    | undefined;
-  return row ?? null;
+export function getItem(id: string): Promise<CatalogItemRow | null> {
+  return queryOne<CatalogItemRow>("SELECT * FROM catalog_items WHERE id = $1", [id]);
 }
 
 /** Itens de uma coleção por tipo, com contagem — usado na vitrine. */
-export function collectionCounts(collectionId: string): Record<string, number> {
-  const rows = getDb()
-    .prepare("SELECT kind, COUNT(*) c FROM catalog_items WHERE collection_id = ? GROUP BY kind")
-    .all(collectionId) as { kind: string; c: number }[];
+export async function collectionCounts(collectionId: string): Promise<Record<string, number>> {
+  const rows = await query<{ kind: string; c: string }>(
+    "SELECT kind, COUNT(*) c FROM catalog_items WHERE collection_id = $1 GROUP BY kind",
+    [collectionId],
+  );
   const out: Record<string, number> = {};
-  for (const r of rows) out[r.kind] = r.c;
+  for (const r of rows) out[r.kind] = Number(r.c);
   return out;
 }
 
-export function getCollectionWithItems(slug: string): {
+export async function getCollectionWithItems(slug: string): Promise<{
   collection: CatalogCollectionRow;
   items: CatalogItemRow[];
-} | null {
-  const collection = getCollectionBySlug(slug);
+} | null> {
+  const collection = await getCollectionBySlug(slug);
   if (!collection) return null;
-  return { collection, items: listItems(collection.id) };
+  return { collection, items: await listItems(collection.id) };
 }
 
 const STATUS_ORDER: Record<string, number> = { vigente: 0, historico: 1, comum: 2, aguardando: 3 };
@@ -116,20 +110,27 @@ const STATUS_ORDER: Record<string, number> = { vigente: 0, historico: 1, comum: 
  * aparece no título de uma matéria (kind=area) ou de um item da coleção — assim
  * "penal", "trânsito" ou "PMDF" encontram a trilha certa.
  */
-export function searchCollections(query?: string, status?: string): CatalogCollectionRow[] {
-  const all = listCollections();
-  const q = (query ?? "").trim().toLowerCase();
+export async function searchCollections(queryText?: string, status?: string): Promise<CatalogCollectionRow[]> {
+  const all = await listCollections();
+  const q = (queryText ?? "").trim().toLowerCase();
   const statusFilter = (status ?? "").trim();
 
-  return all
-    .filter((c) => !statusFilter || c.status === statusFilter)
-    .filter((c) => {
-      if (!q) return true;
-      if (c.title.toLowerCase().includes(q) || c.summary.toLowerCase().includes(q)) return true;
-      return getDb()
-        .prepare("SELECT 1 FROM catalog_items WHERE collection_id = ? AND LOWER(title) LIKE ? LIMIT 1")
-        .get(c.id, `%${q}%`) !== undefined;
-    })
+  const filtered = await Promise.all(
+    all
+      .filter((c) => !statusFilter || c.status === statusFilter)
+      .map(async (c) => {
+        if (!q) return c;
+        if (c.title.toLowerCase().includes(q) || c.summary.toLowerCase().includes(q)) return c;
+        const hit = await queryOne(
+          "SELECT 1 FROM catalog_items WHERE collection_id = $1 AND lower(title) LIKE $2 LIMIT 1",
+          [c.id, `%${q}%`],
+        );
+        return hit ? c : null;
+      }),
+  );
+
+  return filtered
+    .filter((c): c is CatalogCollectionRow => c !== null)
     .sort((a, b) => {
       const sa = STATUS_ORDER[a.status] ?? 9;
       const sb = STATUS_ORDER[b.status] ?? 9;
@@ -154,64 +155,69 @@ export type CatalogProgressRow = {
 };
 
 /** Mapa item_id → estado para um usuário (usado para marcar a UI). */
-export function getUserProgressMap(userId: string, itemIds?: string[]): Record<string, CatalogProgressState> {
-  const db = getDb();
-  const rows = (
+export async function getUserProgressMap(
+  userId: string,
+  itemIds?: string[],
+): Promise<Record<string, CatalogProgressState>> {
+  const rows =
     itemIds && itemIds.length > 0
-      ? db
-          .prepare(
-            `SELECT item_id, state FROM catalog_progress WHERE user_id = ? AND item_id IN (${itemIds
-              .map(() => "?")
-              .join(",")})`,
-          )
-          .all(userId, ...itemIds)
-      : db.prepare("SELECT item_id, state FROM catalog_progress WHERE user_id = ?").all(userId)
-  ) as { item_id: string; state: CatalogProgressState }[];
+      ? await query<{ item_id: string; state: CatalogProgressState }>(
+          `SELECT item_id, state FROM catalog_progress WHERE user_id = $1 AND item_id IN (${itemIds
+            .map((_, i) => `$${i + 2}`)
+            .join(",")})`,
+          [userId, ...itemIds],
+        )
+      : await query<{ item_id: string; state: CatalogProgressState }>(
+          "SELECT item_id, state FROM catalog_progress WHERE user_id = $1",
+          [userId],
+        );
   const out: Record<string, CatalogProgressState> = {};
   for (const r of rows) out[r.item_id] = r.state;
   return out;
 }
 
-export function getItemProgress(userId: string, itemId: string): CatalogProgressState | null {
-  const row = getDb()
-    .prepare("SELECT state FROM catalog_progress WHERE user_id = ? AND item_id = ?")
-    .get(userId, itemId) as { state: CatalogProgressState } | undefined;
-  return row?.state ?? null;
+export function getItemProgress(
+  userId: string,
+  itemId: string,
+): Promise<CatalogProgressState | null> {
+  return queryOne<{ state: CatalogProgressState }>(
+    "SELECT state FROM catalog_progress WHERE user_id = $1 AND item_id = $2",
+    [userId, itemId],
+  ).then((row) => row?.state ?? null);
 }
 
 /** Define o estado de progresso (upsert). Passar null remove o progresso. */
-export function setItemProgress(
+export async function setItemProgress(
   userId: string,
   itemId: string,
   state: CatalogProgressState | null,
-): void {
-  const db = getDb();
+): Promise<void> {
   if (state === null) {
-    db.prepare("DELETE FROM catalog_progress WHERE user_id = ? AND item_id = ?").run(userId, itemId);
+    await execute("DELETE FROM catalog_progress WHERE user_id = $1 AND item_id = $2", [userId, itemId]);
     return;
   }
   const now = nowIso();
-  db.prepare(
+  await execute(
     `INSERT INTO catalog_progress (id, user_id, item_id, state, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT(user_id, item_id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at`,
-  ).run(uid(), userId, itemId, state, now, now);
+    [uid(), userId, itemId, state, now, now],
+  );
 }
 
 /** Contagem de progresso por coleção para uma trilha (notas lidas, flashcards dominados). */
-export function collectionProgressCounts(
+export async function collectionProgressCounts(
   userId: string,
   collectionId: string,
-): { lido: number; dominado: number } {
-  const row = getDb()
-    .prepare(
-      `SELECT
-         SUM(CASE WHEN cp.state = 'lido' THEN 1 ELSE 0 END) AS lido,
-         SUM(CASE WHEN cp.state = 'dominado' THEN 1 ELSE 0 END) AS dominado
-       FROM catalog_progress cp
-       JOIN catalog_items ci ON ci.id = cp.item_id
-       WHERE cp.user_id = ? AND ci.collection_id = ?`,
-    )
-    .get(userId, collectionId) as { lido: number | null; dominado: number | null };
-  return { lido: row.lido ?? 0, dominado: row.dominado ?? 0 };
+): Promise<{ lido: number; dominado: number }> {
+  const row = await queryOne<{ lido: string | null; dominado: string | null }>(
+    `SELECT
+       SUM(CASE WHEN cp.state = 'lido' THEN 1 ELSE 0 END) AS lido,
+       SUM(CASE WHEN cp.state = 'dominado' THEN 1 ELSE 0 END) AS dominado
+     FROM catalog_progress cp
+     JOIN catalog_items ci ON ci.id = cp.item_id
+     WHERE cp.user_id = $1 AND ci.collection_id = $2`,
+    [userId, collectionId],
+  );
+  return { lido: Number(row?.lido ?? 0), dominado: Number(row?.dominado ?? 0) };
 }

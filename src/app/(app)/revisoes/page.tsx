@@ -14,11 +14,11 @@ export default async function RevisoesPage() {
   if (!user) redirect("/entrar");
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: user.timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
-  const queue = reviewQueue(user.id, today);
-  const stats = reviewStats(user.id, today);
-  const history = reviewHistory(user.id, 30);
-  const subjects = listSubjects(user.id);
-  const pendingList = listReviews(user.id).filter((r) => r.state !== "concluida");
+  const queue = await reviewQueue(user.id, today);
+  const stats = await reviewStats(user.id, today);
+  const history = await reviewHistory(user.id, 30);
+  const subjects = await listSubjects(user.id);
+  const pendingList = (await listReviews(user.id)).filter((r) => r.state !== "concluida");
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

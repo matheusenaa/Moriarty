@@ -16,12 +16,12 @@ import { Badge } from "@/components/Badge";
 export default async function PerfilPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
-  const profile = getProfile(user.id);
-  const auth = getUserAuth(user.id);
-  const reminders = listReminders(user.id);
+  const profile = await getProfile(user.id);
+  const auth = await getUserAuth(user.id);
+  const reminders = await listReminders(user.id);
   const today = todayStr(user.timezone);
-  const streak = studyStreak(user.id, today);
-  const gamification = user.gamificationEnabled ? gamificationSummary(user.id, streak) : null;
+  const streak = await studyStreak(user.id, today);
+  const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
 
   return (

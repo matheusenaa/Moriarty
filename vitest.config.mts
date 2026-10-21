@@ -7,7 +7,6 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     env: {
       AUTH_SECRET: "segredo-de-teste-somente-local-1234567890",
-      DATABASE_PATH: "./data/test.db",
     },
   },
   resolve: {

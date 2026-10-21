@@ -21,18 +21,18 @@ export default async function PlanoPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const today = todayStr(user.timezone);
-  const goal = getActiveGoal(user.id);
-  const subjects = listSubjects(user.id);
+  const goal = await getActiveGoal(user.id);
+  const subjects = await listSubjects(user.id);
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
   const weekFrom = weekStart(today);
   const weekTo = addDays(weekFrom, 6);
-  const sessions = listSessions(user.id, weekFrom, addDays(today, 14));
-  const availability = listAvailability(user.id).map((a) => ({
+  const sessions = await listSessions(user.id, weekFrom, addDays(today, 14));
+  const availability = (await listAvailability(user.id)).map((a) => ({
     weekday: a.weekday,
     startMinute: a.start_minute,
     endMinute: a.end_minute,
   }));
-  const unavailable = listUnavailableDates(user.id);
+  const unavailable = await listUnavailableDates(user.id);
 
   const byDay = new Map<string, typeof sessions>();
   for (const s of sessions) {

@@ -46,10 +46,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user.onboarded) redirect("/onboarding");
 
   const today = todayStr(user.timezone);
-  generateDailyReminders(user.id, today);
-  const notifications = listNotifications(user.id).filter((n) => !n.read_at).slice(0, 8);
-  const streak = studyStreak(user.id, today);
-  const gamification = user.gamificationEnabled ? gamificationSummary(user.id, streak) : null;
+  await generateDailyReminders(user.id, today);
+  const notifications = (await listNotifications(user.id)).filter((n) => !n.read_at).slice(0, 8);
+  const streak = await studyStreak(user.id, today);
+  const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
   const progress = gamification ? progressToNextRank(gamification.xp) : null;
 

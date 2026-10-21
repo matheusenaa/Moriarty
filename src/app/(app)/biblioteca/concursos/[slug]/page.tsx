@@ -26,7 +26,7 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const { slug } = await params;
-  const data = getCollectionWithItems(slug);
+  const data = await getCollectionWithItems(slug);
   if (!data) notFound();
 
   const { collection: c, items } = data;
@@ -35,8 +35,8 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
   const flashcards = items.filter((i) => i.kind === "flashcard");
   const questoes = items.filter((i) => i.kind === "questao");
 
-  const progress = getUserProgressMap(user.id, items.map((i) => i.id));
-  const progressCounts = collectionProgressCounts(user.id, c.id);
+  const progress = await getUserProgressMap(user.id, items.map((i) => i.id));
+  const progressCounts = await collectionProgressCounts(user.id, c.id);
   const trackableCount = notas.length + flashcards.length;
   const doneCount = progressCounts.lido + progressCounts.dominado;
   const pct = trackableCount > 0 ? Math.round((doneCount / trackableCount) * 100) : 0;

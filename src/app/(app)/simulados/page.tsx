@@ -14,10 +14,10 @@ import { accuracyPct } from "@/lib/quiz";
 export default async function SimuladosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
-  const quizzes = listQuizzes(user.id);
-  const subjects = listSubjects(user.id);
-  const attempts = listAttempts(user.id, 10);
-  const totalQuestions = countQuestions(user.id);
+  const quizzes = await listQuizzes(user.id);
+  const subjects = await listSubjects(user.id);
+  const attempts = await listAttempts(user.id, 10);
+  const totalQuestions = await countQuestions(user.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">

@@ -1,5 +1,12 @@
--- Moriarty — esquema inicial (SQLite)
--- Aplicado automaticamente na inicialização e por `npm run db:migrate`.
+-- Moriarty — esquema PostgreSQL (equivalente a db/schema.sql, SQLite).
+-- Registro de migrações por nome em schema_migrations.
+--
+-- Decisões (ver docs/DEPLOY.md):
+--   * Banco pertencente à PRÓPRIA aplicação: tabelas users/profiles/password_resets
+--     são nossas (auth interna com bcrypt + jose), NÃO usamos Supabase Auth neste momento.
+--   * Mudança mínima em relação ao SQLite: booleans como SMALLINT 0/1 e datas como TEXT ISO.
+--     Assim os repositórios e a UI (comparações `=== 1`) praticamente não mudam.
+--   * Sem RLS: o isolamento é garantido no servidor (toda query filtra por user_id).
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
   name TEXT PRIMARY KEY,
@@ -10,22 +17,28 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL,
   deleted_at TEXT
 );
 
+-- Unicidade case-insensitive do e-mail (substitui COLLATE NOCASE do SQLite).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(lower(email));
+
 CREATE TABLE IF NOT EXISTS profiles (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  username TEXT NOT NULL UNIQUE,
   display_name TEXT NOT NULL,
   timezone TEXT NOT NULL DEFAULT 'America/Sao_Paulo',
-  gamification_enabled INTEGER NOT NULL DEFAULT 1,
-  reminders_enabled INTEGER NOT NULL DEFAULT 1,
-  onboarded INTEGER NOT NULL DEFAULT 0,
+  gamification_enabled SMALLINT NOT NULL DEFAULT 1,
+  reminders_enabled SMALLINT NOT NULL DEFAULT 1,
+  onboarded SMALLINT NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+
+-- Unicidade case-insensitive do username (substitui COLLATE NOCASE do SQLite).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username_lower ON profiles(lower(username));
 
 CREATE TABLE IF NOT EXISTS password_resets (
   id TEXT PRIMARY KEY,
@@ -48,8 +61,8 @@ CREATE TABLE IF NOT EXISTS study_goals (
   weekly_hours_target REAL NOT NULL DEFAULT 10,
   session_minutes INTEGER NOT NULL DEFAULT 50,
   start_date TEXT NOT NULL,
-  reserve_reviews INTEGER NOT NULL DEFAULT 1,
-  reserve_simulated INTEGER NOT NULL DEFAULT 1,
+  reserve_reviews SMALLINT NOT NULL DEFAULT 1,
+  reserve_simulated SMALLINT NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_goals_user ON study_goals(user_id);
@@ -62,7 +75,7 @@ CREATE TABLE IF NOT EXISTS subjects (
   priority INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
   mastery INTEGER NOT NULL DEFAULT 2 CHECK (mastery BETWEEN 0 AND 5),
   color TEXT NOT NULL DEFAULT '#c9a227',
-  archived INTEGER NOT NULL DEFAULT 0,
+  archived SMALLINT NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_subjects_user ON subjects(user_id);
@@ -73,7 +86,7 @@ CREATE TABLE IF NOT EXISTS topics (
   subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   mastery INTEGER NOT NULL DEFAULT 2 CHECK (mastery BETWEEN 0 AND 5),
-  archived INTEGER NOT NULL DEFAULT 0,
+  archived SMALLINT NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_topics_subject ON topics(subject_id);
@@ -176,13 +189,13 @@ CREATE TABLE IF NOT EXISTS materials (
   subject_id TEXT REFERENCES subjects(id) ON DELETE SET NULL,
   visibility TEXT NOT NULL DEFAULT 'privado' CHECK (visibility IN ('privado','amigos','link','publico')),
   share_token TEXT UNIQUE,
-  share_enabled INTEGER NOT NULL DEFAULT 0,
-  favorite INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0,
+  share_enabled SMALLINT NOT NULL DEFAULT 0,
+  favorite SMALLINT NOT NULL DEFAULT 0,
+  archived SMALLINT NOT NULL DEFAULT 0,
   source_material_id TEXT REFERENCES materials(id) ON DELETE SET NULL,
   source_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   origin_note TEXT NOT NULL DEFAULT '',
-  ai_generated INTEGER NOT NULL DEFAULT 0,
+  ai_generated SMALLINT NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -249,7 +262,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
   title TEXT NOT NULL,
   mode TEXT NOT NULL DEFAULT 'pratica' CHECK (mode IN ('pratica','simulado')),
   time_limit_seconds INTEGER NOT NULL DEFAULT 0,
-  shuffle INTEGER NOT NULL DEFAULT 1,
+  shuffle SMALLINT NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
 
@@ -279,7 +292,7 @@ CREATE TABLE IF NOT EXISTS quiz_answers (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   question_id TEXT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   chosen_index INTEGER,
-  is_correct INTEGER NOT NULL DEFAULT 0,
+  is_correct SMALLINT NOT NULL DEFAULT 0,
   seconds_spent INTEGER NOT NULL DEFAULT 0,
   UNIQUE (attempt_id, question_id)
 );
@@ -318,7 +331,7 @@ CREATE TABLE IF NOT EXISTS reminders (
   kind TEXT NOT NULL CHECK (kind IN ('revisao','sessao')),
   time_minute INTEGER NOT NULL DEFAULT 540,
   days_json TEXT NOT NULL DEFAULT '[0,1,2,3,4,5,6]',
-  enabled INTEGER NOT NULL DEFAULT 1,
+  enabled SMALLINT NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
   UNIQUE (user_id, kind)
 );

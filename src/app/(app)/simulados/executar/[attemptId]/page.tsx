@@ -11,15 +11,14 @@ export default async function ExecutarSimuladoPage({
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const { attemptId } = await params;
-  const attempt = getAttempt(user.id, attemptId);
+  const attempt = await getAttempt(user.id, attemptId);
   if (!attempt) notFound();
   if (attempt.finished_at) redirect(`/simulados/resultado/${attemptId}`);
-  const quiz = getQuiz(user.id, attempt.quiz_id);
+  const quiz = await getQuiz(user.id, attempt.quiz_id);
   if (!quiz) notFound();
 
-  const ids = quizQuestionIds(quiz.id, user.id);
-  const questions = ids
-    .map((id) => getQuestion(user.id, id))
+  const ids = await quizQuestionIds(quiz.id, user.id);
+  const questions = (await Promise.all(ids.map((id) => getQuestion(user.id, id))))
     .filter((q): q is NonNullable<typeof q> => q !== null)
     .map((q) => ({
       id: q.id,

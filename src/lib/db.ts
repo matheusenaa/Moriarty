@@ -1,58 +1,83 @@
-import Database from "better-sqlite3";
-import fs from "fs";
-import path from "path";
-import { seedCatalog } from "../../scripts/seed-catalog.mjs";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 /**
- * Migrações aplicadas na ordem. Cada nome só é executado uma vez (registro em
- * schema_migrations). Mantido igual em scripts/migrate.mjs.
- * - 001_init: esquema base (db/schema.sql)
- * - 002_catalogo: catálogo de conteúdo mantido pela plataforma
- * - 003_catalog_progress: progresso do usuário sobre itens do catálogo
+ * Camada de acesso a dados do Moriarty — PostgreSQL (Supabase, Neon, VPS...).
+ *
+ * Decisões (ver docs/DEPLOY.md):
+ * - Driver `pg` (node-postgres) direto: sem dependência de SDK do Supabase, o
+ *   mesmo código roda em qualquer Postgres.
+ * - Autenticação interna (bcrypt + jose); usuários vivem em `users`/`profiles`.
+ * - Mudança mínima em relação ao SQLite: booleans como SMALLINT 0/1 e datas
+ *   como TEXT ISO, então os repositórios e a UI quase não mudam.
+ * - Conexão via `DATABASE_URL`. Em serverless (Vercel) use a connection string
+ *   do Session Pooler do Supabase.
  */
-export const MIGRATIONS: { name: string; file: string }[] = [
-  { name: "001_init", file: "db/schema.sql" },
-  { name: "002_catalogo", file: "db/migrations/002_catalogo.sql" },
-  { name: "003_catalog_progress", file: "db/migrations/003_catalog_progress.sql" },
-];
 
-let cached: Database.Database | null = null;
+let pool: Pool | null = null;
 
-export function dbPath(): string {
-  const raw = process.env.DATABASE_PATH || "./data/moriarty.db";
-  return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw);
-}
-
-export function getDb(): Database.Database {
-  if (cached) return cached;
-  const file = dbPath();
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const db = new Database(file);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
-  migrate(db);
-  // Conteúdo inicial de concursos (idempotente por slug). Uma vez que as tabelas
-  // do catálogo existem, garante que a plataforma nunca nasça vazia.
-  seedCatalog(db);
-  cached = db;
-  return db;
-}
-
-function migrate(db: Database.Database) {
-  db.exec(
-    "CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
-  );
-  for (const migration of MIGRATIONS) {
-    const applied = db
-      .prepare("SELECT name FROM schema_migrations WHERE name = ?")
-      .get(migration.name);
-    if (applied) continue;
-    const sql = fs.readFileSync(path.join(process.cwd(), migration.file), "utf8");
-    db.exec(sql);
-    db.prepare("INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)").run(
-      migration.name,
-      nowIso(),
+function databaseUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL não configurada. Defina a connection string do Postgres (v. .env.example / docs/DEPLOY.md).",
     );
+  }
+  return url;
+}
+
+/** Pool singleton. Em produção (Supabase/Neon) hospedado, o SSL é obrigatório. */
+export function getPool(): Pool {
+  if (pool) return pool;
+  const url = databaseUrl();
+  const needsSsl = !/localhost|127\.0\.0\.1/.test(url);
+  pool = new Pool({
+    connectionString: url,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+    max: 10,
+  });
+  return pool;
+}
+
+/** Executa uma query e devolve as linhas tipadas. */
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T[]> {
+  const res = await getPool().query<T>(text, params as never[]);
+  return res.rows;
+}
+
+/** Executa uma query e devolve a primeira linha (ou null). */
+export async function queryOne<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: unknown[] = [],
+): Promise<T | null> {
+  const rows = await query<T>(text, params);
+  return rows[0] ?? null;
+}
+
+/** Executa uma query de escrita e devolve o número de linhas afetadas. */
+export async function execute(text: string, params: unknown[] = []): Promise<number> {
+  const res = await getPool().query(text, params as never[]);
+  return res.rowCount ?? 0;
+}
+
+/**
+ * Executa `fn` dentro de uma transação (BEGIN/COMMIT/ROLLBACK). Substitui o
+ * `db.transaction(() => {...})()` síncrono do better-sqlite3.
+ */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
 }
 
@@ -64,9 +89,10 @@ export function uid(): string {
   return crypto.randomUUID();
 }
 
-export function closeDb(): void {
-  if (cached) {
-    cached.close();
-    cached = null;
+/** Encerra o pool (usado nos testes). */
+export async function closeDb(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
   }
 }

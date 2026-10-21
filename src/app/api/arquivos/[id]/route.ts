@@ -12,7 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   const { id } = await ctx.params;
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material || !material.file_path) {
     return NextResponse.json({ error: "Arquivo não encontrado." }, { status: 404 });
   }

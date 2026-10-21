@@ -1,205 +1,305 @@
-# Deploy do Moriarty
+# Deploy do Moriarty — rota online e grátis (Supabase + Render/Vercel)
 
-O Moriarty usa **SQLite em arquivo** e **uploads no filesystem**. Isso significa que o servidor
-precisa de **disco persistente**. Plataformas serverless puras (Vercel, Netlify Functions, AWS
-Lambda) **não são adequadas** sem trocar o banco por Postgres e o storage por um bucket — o
-filesystem é efêmero e cada instância teria seu próprio banco.
+O Moriarty agora usa **PostgreSQL** (driver `pg`) como banco e mantém **autenticação própria**
+(bcrypt + jose). Isso permite hospedar **de graça** usando:
 
-Há também o binário nativo `better-sqlite3`, que exige ambiente Node (não edge).
+- **Supabase** → banco PostgreSQL gerenciado (free tier).
+- **Render** (processo Node) ou **Vercel** (serverless) → o app.
 
-## Opção 1 — VPS pequena (recomendada para custo/controle)
+> Por que não SQLite local? O Postgres local está bloqueado nesta máquina (sem admin para instalar
+> o serviço). Por isso usamos o **Postgres na nuvem** do Supabase — que também é o banco de
+> produção. Os mesmos passos servem para desenvolver/testar e para publicar.
 
-Uma VPS de 1 vCPU e 1 GB (Hetzner, Contabo, DigitalOcean, Oracle Free Tier) é suficiente para uso
-pessoal ou de um grupo pequeno.
+---
 
-Passos:
+## Visão geral do que vamos fazer
 
-```bash
-# no servidor (Ubuntu 22.04+)
-sudo apt update && sudo apt install -y nodejs npm nginx
-sudo npm i -g pm2
+1. Criar conta e projeto no **Supabase** (banco na nuvem).
+2. Copiar a **connection string** (Session Pooler).
+3. Colar essa string no arquivo **`.env.local`** do projeto (e no **`.env.test`** para testes).
+4. Rodar **`npm run db:migrate`** (cria as tabelas + conteúdo inicial de concursos).
+5. Rodar **`npm test`** (valida isolamento/segurança direto no Postgres do Supabase).
+6. Publicar o app no **Render** (recomendado no free) ou **Vercel**.
 
-git clone <seu-repositorio> /var/www/moriarty
-cd /var/www/moriarty
-npm ci
-cp .env.example .env.local   # edite AUTH_SECRET e DATABASE_PATH
-npm run build
+---
+
+## Etapa 1 — Criar conta e projeto no Supabase
+
+Tudo pelo navegador, sem instalar nada e sem senha de administrador.
+
+1. Abra **https://supabase.com** e clique em **Start your project** (canto superior direito).
+2. Faça login com **GitHub** (mais rápido) ou com e-mail/senha. É grátis.
+3. No painel, clique em **New project**.
+4. Preencha o formulário **Create a new project**:
+   - **Organization:** escolha a sua (se não existir, ele cria uma com o seu nome).
+   - **Name:** `moriarty` (ou o nome que quiser).
+   - **Database Password:** clique em **Generate a password** e **GUARDE ESSA SENHA**
+     (você vai usá-la na connection string). Copie para um lugar seguro agora.
+   - **Region:** escolha **South America (São Paulo)** para menor latência no Brasil.
+   - **Pricing Plan:** **Free**.
+5. Clique em **Create new project** e aguarde ~2 minutos (ele provisiona o banco).
+
+> Se aparecer um aviso de e-mail/verificação, conclua antes de continuar.
+
+---
+
+## Etapa 2 — Copiar a connection string (Session Pooler)
+
+1. Abra o seu projeto no painel do Supabase (`https://supabase.com/dashboard/project/_`).
+2. No **topo da página**, ao lado do nome do projeto, clique no botão **Connect**.
+   - Se não achar: menu lateral → **Database** → **Settings**, ou **Project Settings → Database**.
+3. Na janela **Connect to your project**, escolha a aba **Session pooler**.
+   - No free tier, o host direto (`db.xxxx.supabase.co`) é IPv6 e pode não aceitar conexões
+     IPv4. O **Session pooler** funciona sempre.
+4. Clique em **Copy**. Você verá algo assim (exemplo — os valores são seus):
+
+   ```
+   postgresql://postgres.abcdefghijklm:[YOUR-PASSWORD]@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+   ```
+
+5. Substitua `[YOUR-PASSWORD]` pela senha que você gerou na Etapa 1.
+   - Se a senha tiver caracteres especiais (`@`, `#`, `?`, `&`, espaço), eles precisam estar
+     **codificados** (URL-encode). Para evitar dor de cabeça, gere uma senha só com letras e
+     números: **Project Settings → Database → Reset database password**.
+
+> Guarde essa string final. Ela é o seu `DATABASE_URL`.
+
+---
+
+## Etapa 3 — Preencher o `.env.local`
+
+No seu computador, dentro da pasta do projeto `MORIARTY`:
+
+1. Se ainda não existir, copie o exemplo:
+
+   ```powershell
+   Copy-Item .env.example .env.local
+   ```
+
+2. Abra o `.env.local` no editor e ajuste as linhas (mantenha o restante):
+
+   ```env
+   # Segredo de sessão — gere um novo (veja abaixo) e cole aqui
+   AUTH_SECRET=cole-aqui-um-segredo-aleatorio-de-32-mais-caracteres
+
+   # Connection string do Supabase (Session Pooler) da Etapa 2
+   DATABASE_URL=postgresql://postgres.abcdefghijklm:SUA_SENHA@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+
+   APP_TIMEZONE=America/Sao_Paulo
+   ```
+
+3. Para gerar o `AUTH_SECRET`, rode no terminal (dentro da pasta do projeto):
+
+   ```powershell
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   ```
+
+   Copie a saída e cole em `AUTH_SECRET=`.
+
+4. Salve o arquivo. **Nunca** versione o `.env.local` (o `.gitignore` já o ignora).
+
+---
+
+## Etapa 4 — Criar as tabelas e o conteúdo inicial (migração)
+
+No terminal, dentro da pasta do projeto:
+
+```powershell
 npm run db:migrate
-pm2 start npm --name moriarty -- start
-pm2 save && pm2 startup
 ```
 
-Nginx como proxy reverso (com HTTPS via Certbot):
+O que esse comando faz:
 
-```nginx
-server {
-  server_name moriarty.seudominio.com;
-  client_max_body_size 12M;   # uploads de até 10 MB + folga
+- Lê o `DATABASE_URL` do `.env.local`.
+- Aplica as migrações de `db/postgres/*.sql` (tabelas de contas, planejamento, revisão,
+  materiais, amizade, questões, gamificação, catálogo de concursos...).
+- Executa o **seed** do conteúdo inicial (trilhas PMDF, PF e PRF) — idempotente, pode rodar
+  de novo sem duplicar.
 
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  }
-}
+Saída esperada (algo parecido):
+
+```
+Migração aplicada: 001_init
+Migração aplicada: 002_catalogo
+Migração aplicada: 003_catalog_progress
+Seed de conteúdo: 3 coleções, ... itens (inseridos: ...).
+Banco pronto.
 ```
 
-```bash
-sudo certbot --nginx -d moriarty.seudominio.com
+Para aplicar **somente** as migrações, sem o seed:
+
+```powershell
+npm run db:migrate -- --no-seed
 ```
 
-Riscos e cuidados:
+### Se der `ETIMEDOUT` / a porta 5432 estiver bloqueada
 
-- **Um único processo** (`pm2` em modo fork, sem cluster) para evitar escrita concorrente
-  desnecessária no SQLite. WAL ajuda, mas não transforma SQLite em banco distribuído.
-- Backup: copie `data/` e `uploads/` periodicamente. Com WAL ativo, prefira
-  `sqlite3 data/moriarty.db ".backup backup.db"` ou pare o app antes de copiar.
-- `uploads/` pode crescer; monitore disco.
+Em redes corporativas (ou quando o Postgres local também está bloqueado), a porta **5432** pode
+estar fechada e o comando acima falha com `connect ETIMEDOUT ...:5432`. Nesse caso, faça a migração
+**pelo painel do Supabase** (usa HTTPS/443, que nunca é bloqueado):
 
-## Opção 2 — Plataformas de container com volume
+1. Gere o arquivo SQL do conteúdo inicial (não precisa de banco):
 
-Railway, Render (plano pago com disco), Fly.io (volume) e Northflank suportam processos Node com
-disco persistente. Configure:
+   ```powershell
+   npm run db:seed:sql
+   ```
 
-1. Build: `npm ci && npm run build`
-2. Start: `npm start`
-3. Variáveis: `AUTH_SECRET`, `DATABASE_PATH=/data/moriarty.db`, opcionalmente as de IA.
-4. **Volume persistente** montado em `/data` (banco) e `/app/uploads` (arquivos).
-5. Execute `npm run db:migrate` no start (o app também migra sozinho na primeira conexão).
-6. Health check em `/` (landing pública).
+   Isso cria `db/postgres/seed_catalogo.sql`.
 
-Atenção a free tiers: muitos suspenderam ou limitaram disco persistente; verifique a documentação
-atual do provedor antes de contar com “grátis”.
+2. No painel do Supabase, menu lateral → **SQL Editor** → **+ New query**.
 
-## Opção 3 — Migrar para Supabase/Postgres
+3. Para cada arquivo, nesta ordem, cole o conteúdo **inteiro** e clique em **Run**:
+   - `db/postgres/0001_init.sql`
+   - `db/postgres/0002_catalogo.sql`
+   - `db/postgres/0003_catalog_progress.sql`
+   - `db/postgres/seed_catalogo.sql` (o gerado no item 1)
 
-`supabase/migrations/` contém o esquema equivalente com RLS:
-- `0001_init.sql` — contas (via Supabase Auth), planejamento, revisão, materiais, amizade, questões,
-  gamificação, lembretes e fontes.
-- `0002_catalogo.sql` — catálogo de concursos (somente leitura para clientes; escrito pelo backend).
-- `0003_catalog_progress.sql` — progresso pessoal sobre o catálogo (RLS por dono).
+   Cada um deve retornar **Success. No rows returned** (ou uma linha de contagem no seed).
 
-O conteúdo do catálogo tem um seed portátil: `npm run db:seed:supabase` gera
-`supabase/seed_catalogo.sql` a partir da **mesma fonte** do seed SQLite (`scripts/seed-catalog.mjs`),
-pronto para colar no SQL Editor.
+4. Confira em **Table Editor** que as tabelas existem e que `catalog_collections` tem 3 linhas.
 
-Para migrar de verdade é necessário:
+> Observação: o app em execução (Render/Vercel) também fala com o banco por TCP 5432. Se a porta
+> estiver bloqueada **apenas na sua máquina** (firewall local), o deploy na nuvem funcionará normal.
+> Se o bloqueio for da rede **do provedor de deploy**, use o *Transaction Pooler* (porta 6543) do
+> Supabase como `DATABASE_URL`.
 
-1. Criar o projeto Supabase e aplicar as migrations (SQL Editor ou Supabase CLI).
-2. Trocar `src/lib/db.ts` e `src/lib/repo/*` por um cliente Postgres (ex.: `pg` ou
-   `@supabase/supabase-js`) filtrando por `user_id`/`auth.uid()`.
-3. Substituir a autenticação própria pelo Supabase Auth (ou manter, usando service role com
-   cuidado).
-4. Mover uploads para o Supabase Storage e ajustar `/api/arquivos/[id]`.
-5. Reexecutar os testes de isolamento com o novo backend.
+---
 
-A migration SQL **não é aplicada automaticamente** e não foi executada neste projeto; trate-a como
-ponto de partida revisável. As colunas foram conferidas contra `db/schema.sql` (paridade de
-nomes/constraints).
+## Etapa 5 — Rodar os testes contra o Postgres do Supabase
 
-## Caminho online e grátis (Supabase + Render) — passo a passo
+Como não há Postgres local, aponte os testes para um banco de teste no próprio Supabase.
 
-Esta é a rota recomendada para colocar **online e de graça** sem reescrever o app agora:
-rodar o Moriarty como **processo Node** (não serverless) no Render, com **disco persistente**
-para o SQLite e os uploads. O Supabase/IA entram como upgrades quando você quiser.
+1. No Supabase, crie um **segundo projeto** só para testes (ex.: `moriarty-test`) — ou, se
+   preferir, reutilize o mesmo banco em um ambiente separado. Recomendado: projeto separado para
+   não apagar seus dados de desenvolvimento.
+2. Copie a connection string (Session Pooler) desse projeto de teste, igual à Etapa 2.
+3. Edite o arquivo **`.env.test`** na raiz do projeto:
 
-> Por que não Vercel/Netlify grátis? Elas são serverless: filesystem é efêmero e cada instância
-> teria seu próprio banco. O Moriarty foi desenhado com SQLite em arquivo + `better-sqlite3`
-> (binário nativo), que exigem um processo Node com disco.
+   ```env
+   AUTH_SECRET=segredo-de-teste-somente-local-1234567890
+   DATABASE_URL=postgresql://postgres.SEUPROJETOTESTE:SUA_SENHA@aws-0-sa-east-1.pooler.supabase.com:5432/postgres
+   ```
 
-### Etapa A — Subir o código para o GitHub
+   > Nota: os testes **recriam as tabelas do zero** (DROP + migrações) no banco apontado por
+   > `DATABASE_URL`. Por isso use um projeto **de teste**, nunca o de produção.
 
-```bash
-cd MORIARTY
-git init
-git add .
-git commit -m "Moriarty"
-# crie um repositório vazio no GitHub e:
-git remote add origin https://github.com/SEU_USUARIO/moriarty.git
-git push -u origin main
-```
+4. Rode:
 
-O `.gitignore` já ignora `.env.local`, `data/` e `uploads/` — segredos e dados locais **não** vão
-para o repositório.
+   ```powershell
+   npm test
+   ```
 
-### Etapa B — Conta no Render e criação do Web Service
+   Os testes conectam no Supabase, aplicam migrações, semeiam o catálogo e verificam o isolamento
+   de dados entre usuários.
 
-1. Crie uma conta em https://render.com (plano **Free**).
-2. **New → Web Service** → conecte o repositório `moriarty`.
-3. Configurações:
-   - **Runtime:** Node
+> Se os testes falharem na conexão, verifique: (a) a senha está correta? (b) usou o **Session
+> Pooler**? (c) o projeto do Supabase terminou de provisionar?
+
+---
+
+## Etapa 6 — Publicar o app
+
+Escolha UMA das opções abaixo.
+
+### Opção A — Render (processo Node, recomendado no free)
+
+1. Suba o código para o GitHub (se ainda não subiu):
+
+   ```powershell
+   git add .
+   git commit -m "Moriarty"
+   git push
+   ```
+
+   > O `.env.local` e o `.env.test` **não** vão para o repositório (estão no `.gitignore`).
+
+2. Crie uma conta em **https://render.com** (plano **Free**, login com GitHub).
+3. Clique em **New +** → **Web Service**.
+4. Conecte o repositório `moriarty` (autorize o acesso ao GitHub quando pedir).
+5. Preencha a configuração:
+   - **Name:** `moriarty`
+   - **Region:** a mais próxima (Ohio/São Paulo, se disponível)
+   - **Branch:** `main`
+   - **Runtime:** `Node`
    - **Build Command:** `npm ci && npm run build`
    - **Start Command:** `npm start`
-   - **Health Check Path:** `/`
-   - **Instance Type:** Free
-4. **Environment Variables** (aba Environment):
-   - `AUTH_SECRET` = um segredo de 32+ caracteres (gere com o comando do README).
-   - `DATABASE_PATH` = `/var/data/moriarty.db`
+   - **Instance Type:** `Free`
+6. Em **Environment** (variáveis de ambiente), adicione:
+   - `AUTH_SECRET` = o mesmo segredo aleatório que você gerou (ou um novo).
+   - `DATABASE_URL` = a connection string do Supabase (Session Pooler, do projeto de produção).
    - `APP_TIMEZONE` = `America/Sao_Paulo`
-   - (opcional IA) `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_DAILY_LIMIT`.
-5. **Disks** (aba Disks) → Add Disk:
-   - **Mount Path:** `/var/data`
-   - **Size:** 1 GB
-   > O disco persistente guarda o SQLite. Guarde também os uploads: para isso, adicione um segundo
-   > disk em `/app/uploads` (mesmo se o plano free não permitir dois disks, use um único disk em
-   > `/var/data` e defina os uploads lá — ver nota abaixo).
-6. **Deploy**. No primeiro boot o app aplica as migrations e o seed automaticamente
-   (`src/lib/db.ts`), criando o banco em `/var/data/moriarty.db`.
+   - (opcional, IA) `AI_PROVIDER=gemini`, `AI_API_KEY=...`, `AI_MODEL=gemini-2.0-flash`,
+     `AI_DAILY_LIMIT=20`
+7. Clique em **Create Web Service** / **Deploy**.
+8. O Render faz o build e sobe o app. Quando terminar, clique no link do topo
+   (`https://moriarty-xxxx.onrender.com`).
 
-> **Importante sobre uploads:** no código atual os arquivos vão para `./uploads`. Para usar o disco
-> persistente, defina o diretório de uploads dentro do mount (ex.: um segundo disk em
-> `/app/uploads`, ou um volume único e mover a pasta). Se preferir simplicidade no free tier,
-> use o Moriarty sem uploads de arquivo e mantenha notas/links/flashcards — o resto funciona
-> 100%.
+> No primeiro acesso o Render free pode demorar ~30-50s (ele “acorda”). Depois fica rápido.
 
-### Etapa C — Rodar as migrations manualmente (opcional, recomendado)
+### Opção B — Vercel (serverless)
 
-No painel do Render, aba **Shell**, rode uma vez:
+O app usa apenas Postgres (sem arquivos em disco), então funciona na Vercel.
 
-```bash
-npm run db:migrate
+1. Suba o código para o GitHub (igual à Opção A, passo 1).
+2. Crie uma conta em **https://vercel.com** (login com GitHub).
+3. Clique em **Add New...** → **Project**.
+4. Selecione o repositório `moriarty` e clique em **Import**.
+5. Antes de concluir, abra **Environment Variables** e adicione:
+   - `AUTH_SECRET` = seu segredo aleatório.
+   - `DATABASE_URL` = connection string do Supabase (Session Pooler).
+   - `APP_TIMEZONE` = `America/Sao_Paulo`
+6. Clique em **Deploy**. Ao final, a Vercel mostra a URL pública do app.
+
+> Se for usar **upload de arquivos** (tipo “arquivo” na Biblioteca), na Vercel o disco é efêmero —
+> o arquivo não persistirá. Para uploads persistentes, use o Supabase Storage (etapa futura) ou a
+> Opção A (Render com disco, plano pago). Notas, links, questões e flashcards funcionam 100%.
+
+---
+
+## Etapa 7 — Primeiro acesso e validação
+
+1. Abra a URL pública do app.
+2. Clique em **Criar conta** e cadastre-se.
+3. Faça login, complete o **onboarding** e confira a **Biblioteca de concursos**
+   (PMDF, PF, PRF devem aparecer).
+4. Se algo der erro de banco, confira no Render/Vercel se `DATABASE_URL` e `AUTH_SECRET` foram
+   salvos corretamente e faça um **redeploy**.
+
+---
+
+## Gerar um `AUTH_SECRET` (resumo)
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-O app também migra sozinho na primeira conexão, então isso é apenas uma verificação explícita.
+Cole a saída em `AUTH_SECRET` no `.env.local` e nas variáveis do Render/Vercel.
 
-### Etapa D — IA online (Gemini, plano gratuito)
+---
 
-1. Gere uma chave de API em https://aistudio.google.com/apikey (Google AI Studio tem camada grátis).
-2. No Render → Environment, adicione:
-   - `AI_PROVIDER=gemini`
-   - `AI_API_KEY=sua-chave`
-   - `AI_MODEL=gemini-2.0-flash`
-   - `AI_DAILY_LIMIT=20`
-3. Salve (o Render reinicia). A IA passa a sugerir cronogramas; em qualquer falha, o motor
-   determinístico assume (o app nunca fica inutilizável). A chave fica **só no servidor**.
+## Solução de problemas (FAQ)
 
-### Etapa E — (Futuro) Supabase para dados na nuvem
+- **`DATABASE_URL não configurada`** → o `.env.local` não existe ou a variável está vazia.
+  Copie o `.env.example` e preencha.
+- **`password authentication failed`** → a senha na connection string está errada ou não foi
+  URL-codificada. Gere uma senha só com letras/números no Supabase e refaça a string.
+- **`ENOTFOUND db.xxxx.supabase.co` / timeout** → use o **Session Pooler**, não o host direto.
+- **Testes apagam tudo** → `npm test` recria as tabelas. Use um projeto Supabase **separado** para
+  testes (`.env.test`).
+- **Render hiberna** → normal no free; o primeiro acesso após inatividade demora ~30-50s.
+- **Uploads somem na Vercel** → disco efêmero; use Render com disco (pago) ou Supabase Storage.
 
-Quando quiser banco gerenciado e storage na nuvem:
-1. Crie o projeto Supabase (free tier).
-2. Rode `npm run db:seed:supabase` e aplique `supabase/migrations/*.sql` + `supabase/seed_catalogo.sql`
-   no SQL Editor.
-3. Siga a "Opção 3" acima para trocar a camada de dados (`src/lib/repo/*`) por Postgres/Supabase.
-   As telas e os motores puros (`srs`, `planner`, `quiz`, `xp`) **não mudam**.
-
-### Limites do plano free (verifique a documentação atual)
-
-- O Render free **hiberna** o serviço após inatividade (primeiro acesso pode demorar ~30s).
-- Disks no free tier têm limite de tamanho; para uso pessoal/pequeno grupo, 1 GB basta.
-- Backups: exporte o banco pela própria tela de **Perfil → Exportar JSON** ou copie
-  `/var/data/moriarty.db`.
+---
 
 ## Checklist de produção
 
-- [ ] `AUTH_SECRET` forte, único e fora do repositório (>= 32 caracteres).
-- [ ] HTTPS ativo; cookie passa a `Secure` automaticamente com `NODE_ENV=production`.
-- [ ] `DATABASE_PATH` e `uploads/` em volume persistente.
-- [ ] Backup automatizado de `data/` e `uploads/`.
-- [ ] `npm run lint`, `npm run typecheck`, `npm test` e `npm run build` verdes no deploy.
-- [ ] Migrations do Supabase (`0001`–`0003`) e seed (`seed_catalogo.sql`) aplicados **se** estiver
-      usando Postgres/Supabase.
-- [ ] Limite de upload do proxy ≥ 12 MB.
-- [ ] Logs sem segredos; o token de recuperação aparece no log por falta de e-mail configurado —
-      proteja o acesso aos logs.
+- [ ] Conta no Supabase criada e projeto (produção) provisionado.
+- [ ] `DATABASE_URL` (Session Pooler) no `.env.local`, no `.env.test` e nas envs do host.
+- [ ] `AUTH_SECRET` forte (>= 32 caracteres), único e fora do repositório.
+- [ ] `npm run db:migrate` executado no banco de **produção**.
+- [ ] `npm run lint`, `npm run typecheck`, `npm test` e `npm run build` verdes.
+- [ ] App publicado (Render ou Vercel) com HTTPS.
+- [ ] Projeto Supabase **separado** para testes (não usar produção no `.env.test`).
+- [ ] Backup: use **Perfil → Exportar JSON** ou os backups automáticos do Supabase.
+- [ ] Logs sem segredos.
 - [ ] Política de privacidade/termos se o app for público.

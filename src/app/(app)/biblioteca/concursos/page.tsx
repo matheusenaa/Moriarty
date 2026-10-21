@@ -23,7 +23,7 @@ export default async function ConcursosPage({
   if (!user) redirect("/entrar");
 
   const { q = "", status = "" } = await searchParams;
-  const collections = searchCollections(q, status);
+  const collections = await searchCollections(q, status);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -95,8 +95,9 @@ export default async function ConcursosPage({
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {collections.map((c) => {
-            const counts = collectionCounts(c.id);
+          {await Promise.all(
+            collections.map(async (c) => {
+            const counts = await collectionCounts(c.id);
             return (
               <Card key={c.id} className="flex flex-col">
                 <div className="flex items-start justify-between gap-2">
@@ -126,8 +127,9 @@ export default async function ConcursosPage({
                   Abrir trilha
                 </Link>
               </Card>
-            );
-          })}
+              );
+            }),
+          )}
         </div>
       )}
 

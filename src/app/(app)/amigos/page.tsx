@@ -12,9 +12,9 @@ import { blockUserFormAction, removeFriendAction, respondFriendRequestFormAction
 export default async function AmigosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
-  const friends = listFriends(user.id);
-  const requests = listPendingRequests(user.id);
-  const blocks = listBlocks(user.id);
+  const friends = await listFriends(user.id);
+  const requests = await listPendingRequests(user.id);
+  const blocks = await listBlocks(user.id);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

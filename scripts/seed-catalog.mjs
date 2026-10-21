@@ -15,7 +15,7 @@
  * Estes dados são a fonte única usada pelo seed (script + testes + app).
  */
 
-const CHECKED_AT = "2026-10-20";
+export const CHECKED_AT = "2026-10-20";
 
 // Fontes oficiais conferidas na execução (links oficiais):
 export const SOURCES = {
@@ -774,102 +774,113 @@ function questions(prefix, list) {
 }
 
 /**
- * Executa o seed do catálogo de forma idempotente.
- * @param {import("better-sqlite3").Database} db
- * @returns {{collections:number, items:number, inserted:number}}
+ * Executa o seed do catálogo no PostgreSQL de forma idempotente.
+ * Usa a MESMA fonte de dados (COLLECTIONS) do app.
+ * @param {{ query: (text: string, params?: unknown[]) => Promise<{ rowCount: number | null, rows: unknown[] }> }} client
+ * @returns {Promise<{collections:number, items:number, inserted:number}>}
  */
-export function seedCatalog(db) {
+export async function seedCatalogPg(client) {
   const now = new Date().toISOString();
   let inserted = 0;
   let itemCount = 0;
 
-  const upsertCollection = db.prepare(
-    `INSERT INTO catalog_collections
-      (id, slug, title, discipline_label, summary, status, status_note, source_name, source_url, edital_ref, checked_at, created_at, updated_at)
-     VALUES (@id, @slug, @title, @discipline_label, @summary, @status, @status_note, @source_name, @source_url, @edital_ref, @checked_at, @created_at, @updated_at)
-     ON CONFLICT(slug) DO UPDATE SET
-       title=excluded.title, summary=excluded.summary, status=excluded.status,
-       status_note=excluded.status_note, source_name=excluded.source_name,
-       source_url=excluded.source_url, edital_ref=excluded.edital_ref,
-       checked_at=excluded.checked_at, updated_at=excluded.updated_at`,
-  );
-  const getCollectionId = db.prepare("SELECT id FROM catalog_collections WHERE slug = ?");
-  const insertItem = db.prepare(
-    `INSERT INTO catalog_items
-      (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order, created_at, updated_at)
-     VALUES (@id, @collection_id, @kind, @category, @title, @body, @options_json, @correct_index, @explanation, @origin_note, @ref_label, @url, @sort_order, @created_at, @updated_at)
-     ON CONFLICT(collection_id, title, kind) DO NOTHING`,
-  );
+  for (const col of COLLECTIONS) {
+    const colId = `catalog:${col.slug}`;
+    const up = await client.query(
+      `INSERT INTO catalog_collections
+        (id, slug, title, discipline_label, summary, status, status_note, source_name, source_url, edital_ref, checked_at, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       ON CONFLICT(slug) DO UPDATE SET
+         title=excluded.title, summary=excluded.summary, status=excluded.status,
+         status_note=excluded.status_note, source_name=excluded.source_name,
+         source_url=excluded.source_url, edital_ref=excluded.edital_ref,
+         checked_at=excluded.checked_at, updated_at=excluded.updated_at`,
+      [
+        colId,
+        col.slug,
+        col.title,
+        "Concursos",
+        col.summary,
+        col.status,
+        col.statusNote,
+        col.source.name,
+        col.source.url,
+        col.editalRef,
+        CHECKED_AT,
+        now,
+        now,
+      ],
+    );
+    if ((up.rowCount ?? 0) > 0) inserted++;
 
-  const tx = db.transaction(() => {
-    for (const col of COLLECTIONS) {
-      const colId = `catalog:${col.slug}`;
-      upsertCollection.run({
-        id: colId,
-        slug: col.slug,
-        title: col.title,
-        discipline_label: "Concursos",
-        summary: col.summary,
-        status: col.status,
-        status_note: col.statusNote,
-        source_name: col.source.name,
-        source_url: col.source.url,
-        edital_ref: col.editalRef,
-        checked_at: CHECKED_AT,
-        created_at: now,
-        updated_at: now,
+    const stored = await client.query("SELECT id FROM catalog_collections WHERE slug = $1", [col.slug]);
+    const storedId = stored.rows[0].id;
+
+    const insertItem = async (item) => {
+      const res = await client.query(
+        `INSERT INTO catalog_items
+          (id, collection_id, kind, category, title, body, options_json, correct_index, explanation, origin_note, ref_label, url, sort_order, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         ON CONFLICT(collection_id, title, kind) DO NOTHING`,
+        [
+          item.id,
+          storedId,
+          item.kind,
+          item.category,
+          item.title,
+          item.body,
+          item.options_json,
+          item.correct_index,
+          item.explanation,
+          item.origin_note,
+          item.ref_label,
+          item.url,
+          item.sort_order,
+          now,
+          now,
+        ],
+      );
+      itemCount++;
+      if ((res.rowCount ?? 0) > 0) inserted++;
+    };
+
+    // Áreas (matérias) da trilha
+    let areaOrder = 0;
+    for (const area of col.areas) {
+      await insertItem({
+        id: `catalog:${col.slug}:area:${areaOrder}`,
+        kind: "area",
+        category: "resumo_proprio",
+        title: area,
+        body: "",
+        options_json: "",
+        correct_index: null,
+        explanation: "",
+        origin_note: "",
+        ref_label: "Matéria da trilha",
+        url: "",
+        sort_order: areaOrder,
       });
-      const storedId = getCollectionId.get(col.slug).id;
-
-      // Áreas (matérias) da trilha
-      let areaOrder = 0;
-      for (const area of col.areas) {
-        const res = insertItem.run({
-          id: `catalog:${col.slug}:area:${areaOrder}`,
-          collection_id: storedId,
-          kind: "area",
-          category: "resumo_proprio",
-          title: area,
-          body: "",
-          options_json: "",
-          correct_index: null,
-          explanation: "",
-          origin_note: "",
-          ref_label: "Matéria da trilha",
-          url: "",
-          sort_order: areaOrder,
-          created_at: now,
-          updated_at: now,
-        });
-        itemCount++;
-        if (res.changes > 0) inserted++;
-        areaOrder++;
-      }
-
-      for (const item of col.items) {
-        const res = insertItem.run({
-          id: `catalog:${col.slug}:${item.kind}:${item.order}`,
-          collection_id: storedId,
-          kind: item.kind,
-          category: item.category ?? "resumo_proprio",
-          title: item.title,
-          body: item.body ?? "",
-          options_json: item.options ? JSON.stringify(item.options) : "",
-          correct_index: typeof item.correctIndex === "number" ? item.correctIndex : null,
-          explanation: item.explanation ?? "",
-          origin_note: item.originNote ?? "",
-          ref_label: item.refLabel ?? "",
-          url: item.url ?? "",
-          sort_order: item.order,
-          created_at: now,
-          updated_at: now,
-        });
-        itemCount++;
-        if (res.changes > 0) inserted++;
-      }
+      areaOrder++;
     }
-  });
-  tx();
+
+    for (const item of col.items) {
+      await insertItem({
+        id: `catalog:${col.slug}:${item.kind}:${item.order}`,
+        kind: item.kind,
+        category: item.category ?? "resumo_proprio",
+        title: item.title,
+        body: item.body ?? "",
+        options_json: item.options ? JSON.stringify(item.options) : "",
+        correct_index: typeof item.correctIndex === "number" ? item.correctIndex : null,
+        explanation: item.explanation ?? "",
+        origin_note: item.originNote ?? "",
+        ref_label: item.refLabel ?? "",
+        url: item.url ?? "",
+        sort_order: item.order,
+      });
+    }
+  }
 
   return { collections: COLLECTIONS.length, items: itemCount, inserted };
 }

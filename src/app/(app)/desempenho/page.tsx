@@ -28,15 +28,15 @@ export default async function DesempenhoPage({
   const today = todayStr(user.timezone);
   const from = addDays(today, -(days - 1));
 
-  const minutes = dailyMinutes(user.id, from, today);
-  const period = totals(user.id, from, today);
-  const accuracy = questionAccuracyBySubject(user.id);
-  const trend = attemptTrend(user.id);
-  const reviews = reviewSummary(user.id, today);
-  const streak = studyStreak(user.id, today);
-  const mastery = subjectMastery(user.id);
-  const status = sessionsByStatus(user.id, from, today);
-  const subjects = listSubjects(user.id);
+  const minutes = await dailyMinutes(user.id, from, today);
+  const period = await totals(user.id, from, today);
+  const accuracy = await questionAccuracyBySubject(user.id);
+  const trend = await attemptTrend(user.id);
+  const reviews = await reviewSummary(user.id, today);
+  const streak = await studyStreak(user.id, today);
+  const mastery = await subjectMastery(user.id);
+  const status = await sessionsByStatus(user.id, from, today);
+  const subjects = await listSubjects(user.id);
   const nameOf = (id: string | null) => subjects.find((s) => s.id === id)?.name ?? "Sem matéria";
 
   const hasData =

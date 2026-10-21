@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { queryOne } from "./db";
 import { readSession } from "./session";
 
 export type AuthUser = {
@@ -16,27 +16,23 @@ export type AuthUser = {
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const session = await readSession();
   if (!session) return null;
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT u.id, u.email, p.username, p.display_name, p.timezone,
-              p.gamification_enabled, p.reminders_enabled, p.onboarded
-         FROM users u
-         JOIN profiles p ON p.user_id = u.id
-        WHERE u.id = ? AND u.deleted_at IS NULL`,
-    )
-    .get(session.sub) as
-    | {
-        id: string;
-        email: string;
-        username: string;
-        display_name: string;
-        timezone: string;
-        gamification_enabled: number;
-        reminders_enabled: number;
-        onboarded: number;
-      }
-    | undefined;
+  const row = await queryOne<{
+    id: string;
+    email: string;
+    username: string;
+    display_name: string;
+    timezone: string;
+    gamification_enabled: number;
+    reminders_enabled: number;
+    onboarded: number;
+  }>(
+    `SELECT u.id, u.email, p.username, p.display_name, p.timezone,
+            p.gamification_enabled, p.reminders_enabled, p.onboarded
+       FROM users u
+       JOIN profiles p ON p.user_id = u.id
+      WHERE u.id = $1 AND u.deleted_at IS NULL`,
+    [session.sub],
+  );
   if (!row) return null;
   return {
     id: row.id,

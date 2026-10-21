@@ -22,7 +22,7 @@ function addDaysStr(dateStr: string, days: number): string {
 export async function saveCatalogItemAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const itemId = String(formData.get("itemId") ?? "");
-  const item = getItem(itemId);
+  const item = await getItem(itemId);
   if (!item) return;
 
   const type =
@@ -31,7 +31,7 @@ export async function saveCatalogItemAction(formData: FormData): Promise<void> {
     item.origin_note ||
     `Fonte: ${item.ref_label || "catálogo de concursos"}. Copiado da biblioteca de concursos do Moriarty.`;
 
-  createMaterial(user.id, {
+  await createMaterial(user.id, {
     title: item.title,
     description: `Do catálogo de concursos (${item.category}).`,
     type,
@@ -48,10 +48,10 @@ export async function saveCatalogItemAction(formData: FormData): Promise<void> {
 export async function scheduleCatalogItemReviewAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const itemId = String(formData.get("itemId") ?? "");
-  const item = getItem(itemId);
+  const item = await getItem(itemId);
   if (!item) return;
   const due = addDaysStr(todayStr(user.timezone), 1);
-  scheduleReview(user.id, {
+  await scheduleReview(user.id, {
     title: item.title,
     subjectId: null,
     sourceType: "manual",
@@ -70,11 +70,11 @@ export async function scheduleCatalogItemReviewAction(formData: FormData): Promi
 export async function importCollectionSubjectsAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const slug = String(formData.get("slug") ?? "");
-  const data = getCollectionWithItems(slug);
+  const data = await getCollectionWithItems(slug);
   if (!data) return;
 
-  const goal = getActiveGoal(user.id);
-  const existing = new Set(listSubjects(user.id, true).map((s) => s.name.trim().toLowerCase()));
+  const goal = await getActiveGoal(user.id);
+  const existing = new Set((await listSubjects(user.id, true)).map((s) => s.name.trim().toLowerCase()));
   const areas = data.items.filter((i) => i.kind === "area");
   const notas = data.items.filter((i) => i.kind === "nota");
 
@@ -83,7 +83,7 @@ export async function importCollectionSubjectsAction(formData: FormData): Promis
   for (const area of areas) {
     const key = area.title.trim().toLowerCase();
     if (existing.has(key)) continue;
-    const id = createSubject(user.id, {
+    const id = await createSubject(user.id, {
       name: area.title,
       priority: Math.max(1, priority--),
       mastery: 1,
@@ -97,7 +97,7 @@ export async function importCollectionSubjectsAction(formData: FormData): Promis
   // Primeira disciplina da trilha recebe as notas como tópicos de estudo.
   if (createdSubjectIds.length > 0) {
     const first = createdSubjectIds[0];
-    for (const n of notas) createTopic(user.id, first.id, n.title);
+    for (const n of notas) await createTopic(user.id, first.id, n.title);
   }
 
   revalidatePath("/materias");
@@ -113,12 +113,12 @@ export async function setCatalogItemProgressAction(formData: FormData): Promise<
   const user = await requireUser();
   const itemId = String(formData.get("itemId") ?? "");
   const rawState = String(formData.get("state") ?? "");
-  const item = getItem(itemId);
+  const item = await getItem(itemId);
   if (!item) return;
 
   const state: CatalogProgressState | null =
     rawState === "lido" || rawState === "dominado" ? rawState : null;
-  setItemProgress(user.id, itemId, state);
+  await setItemProgress(user.id, itemId, state);
 
   revalidatePath("/biblioteca/concursos");
   revalidatePath(`/biblioteca/concursos/${String(formData.get("slug") ?? "")}`);

@@ -17,8 +17,9 @@ export default async function QuestoesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const params = await searchParams;
-  const subjects = listSubjects(user.id);
-  const questions = listQuestions(user.id, params.materia || undefined);
+  const subjects = await listSubjects(user.id);
+  const questions = await listQuestions(user.id, params.materia || undefined);
+  const totalQuestions = await countQuestions(user.id);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -37,7 +38,7 @@ export default async function QuestoesPage({
       </Card>
 
       <Card>
-        <CardTitle>Suas questões ({countQuestions(user.id)})</CardTitle>
+        <CardTitle>Suas questões ({totalQuestions})</CardTitle>
         <form className="mt-2" method="get">
           <label htmlFor="materia" className="mb-1 block text-xs text-cinza">
             Filtrar por matéria

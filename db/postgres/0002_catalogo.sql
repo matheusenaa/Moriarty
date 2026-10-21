@@ -1,7 +1,5 @@
--- Moriarty — migração 002: catálogo de conteúdo mantido pela plataforma (curadoria).
--- Aditiva e idempotente. NÃO toca em tabelas/dados de usuário.
--- Conteúdo inicial de preparação para concursos (PMDF, PF, PRF) vive aqui, fora
--- do progresso pessoal de qualquer estudante.
+-- Moriarty — migração 002 (PostgreSQL): catálogo de conteúdo de concursos.
+-- Equivalente a db/migrations/002_catalogo.sql.
 
 CREATE TABLE IF NOT EXISTS catalog_collections (
   id TEXT PRIMARY KEY,
@@ -9,8 +7,6 @@ CREATE TABLE IF NOT EXISTS catalog_collections (
   title TEXT NOT NULL,
   discipline_label TEXT NOT NULL DEFAULT 'Concursos',
   summary TEXT NOT NULL DEFAULT '',
-  -- Status de atualização conforme regra de verificação de fontes:
-  -- 'vigente' | 'historico' | 'comum' | 'aguardando'
   status TEXT NOT NULL DEFAULT 'comum'
     CHECK (status IN ('vigente','historico','comum','aguardando')),
   status_note TEXT NOT NULL DEFAULT '',
@@ -25,18 +21,14 @@ CREATE TABLE IF NOT EXISTS catalog_collections (
 CREATE TABLE IF NOT EXISTS catalog_items (
   id TEXT PRIMARY KEY,
   collection_id TEXT NOT NULL REFERENCES catalog_collections(id) ON DELETE CASCADE,
-  -- Tipo de conteúdo: matéria (area), nota, flashcard, questao, fonte
   kind TEXT NOT NULL CHECK (kind IN ('area','nota','flashcard','questao','fonte')),
-  -- Categoria do material: oficial | resumo_proprio | questao_autoral | flashcard | fonte_externa
   category TEXT NOT NULL DEFAULT 'resumo_proprio'
     CHECK (category IN ('oficial','resumo_proprio','questao_autoral','flashcard','fonte_externa')),
   title TEXT NOT NULL,
   body TEXT NOT NULL DEFAULT '',
-  -- Para questões: JSON de alternativas; correct_index + explanation preenchidos.
   options_json TEXT NOT NULL DEFAULT '',
   correct_index INTEGER,
   explanation TEXT NOT NULL DEFAULT '',
-  -- Rótulo de origem ex.: "autoral/gerada para prática, não oficial"
   origin_note TEXT NOT NULL DEFAULT '',
   ref_label TEXT NOT NULL DEFAULT '',
   url TEXT NOT NULL DEFAULT '',

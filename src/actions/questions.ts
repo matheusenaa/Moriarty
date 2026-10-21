@@ -62,7 +62,7 @@ export async function saveQuestionAction(_prev: ActionState, formData: FormData)
   if (parsed.data.correctIndex >= parsed.data.options.length) {
     return { ok: false, error: "A resposta correta deve corresponder a uma alternativa existente." };
   }
-  createQuestion(user.id, {
+  await createQuestion(user.id, {
     ...parsed.data,
     subjectId: parsed.data.subjectId || null,
   });
@@ -72,7 +72,7 @@ export async function saveQuestionAction(_prev: ActionState, formData: FormData)
 
 export async function deleteQuestionAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  deleteQuestion(user.id, String(formData.get("id") ?? ""));
+  await deleteQuestion(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/questoes");
 }
 
@@ -96,12 +96,12 @@ export async function buildQuizAction(_prev: ActionState, formData: FormData): P
     count: formData.get("count"),
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  const pool = listQuestions(user.id, parsed.data.subjectId || undefined);
+  const pool = await listQuestions(user.id, parsed.data.subjectId || undefined);
   if (pool.length === 0) {
     return { ok: false, error: "Você ainda não tem questões cadastradas para este filtro." };
   }
   const picked = pool.slice(0, parsed.data.count);
-  const quizId = createQuiz(user.id, {
+  const quizId = await createQuiz(user.id, {
     title: parsed.data.title,
     goalId: null,
     mode: parsed.data.mode,
@@ -115,27 +115,34 @@ export async function buildQuizAction(_prev: ActionState, formData: FormData): P
 
 export async function deleteQuizAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  deleteQuiz(user.id, String(formData.get("id") ?? ""));
+  await deleteQuiz(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/simulados");
 }
 
 export async function startQuizAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const quizId = String(formData.get("id") ?? "");
-  const ids = quizQuestionIds(quizId, user.id);
+  const ids = await quizQuestionIds(quizId, user.id);
   if (ids.length === 0) return;
-  const attemptId = startAttempt(user.id, quizId, ids.length);
+  const attemptId = await startAttempt(user.id, quizId, ids.length);
   revalidatePath("/simulados");
   if (attemptId) {
-    const quiz = getQuiz(user.id, quizId);
+    const quiz = await getQuiz(user.id, quizId);
     const shuffleFlag = quiz?.shuffle === 1;
     const { redirect } = await import("next/navigation");
-    const qs = ids.map((id) => getQuestion(user.id, id)!).filter(Boolean);
+    const qs = (await Promise.all(ids.map((id) => getQuestion(user.id, id)))).filter(
+      (q): q is NonNullable<typeof q> => q !== null,
+    );
     const ordered = shuffleFlag ? shuffleQuiz(qs.map(toQuizQuestion), Date.now()) : qs.map(toQuizQuestion);
     // Persiste a ordem efetiva re-posicionando no quiz.
-    const { getDb } = await import("@/lib/db");
-    const upd = getDb().prepare("UPDATE quiz_questions SET position = ? WHERE quiz_id = ? AND question_id = ?");
-    ordered.forEach((q, i) => upd.run(i, quizId, q.id));
+    const { execute } = await import("@/lib/db");
+    for (let i = 0; i < ordered.length; i++) {
+      await execute("UPDATE quiz_questions SET position = $1 WHERE quiz_id = $2 AND question_id = $3", [
+        i,
+        quizId,
+        ordered[i].id,
+      ]);
+    }
     redirect(`/simulados/executar/${attemptId}`);
   }
 }
@@ -147,26 +154,26 @@ export async function answerQuestionAction(input: {
   secondsSpent: number;
 }): Promise<ActionState> {
   const user = await requireUser();
-  const attempt = getAttempt(user.id, input.attemptId);
+  const attempt = await getAttempt(user.id, input.attemptId);
   if (!attempt) return { ok: false, error: "Tentativa não encontrada." };
   if (attempt.finished_at) return { ok: false, error: "Esta tentativa já foi finalizada." };
-  const ids = quizQuestionIds(attempt.quiz_id, user.id);
+  const ids = await quizQuestionIds(attempt.quiz_id, user.id);
   if (!ids.includes(input.questionId)) return { ok: false, error: "Questão fora do simulado." };
-  saveAnswer(user.id, input.attemptId, input.questionId, input.chosenIndex, Math.max(0, Math.min(3600, Math.round(input.secondsSpent))));
+  await saveAnswer(user.id, input.attemptId, input.questionId, input.chosenIndex, Math.max(0, Math.min(3600, Math.round(input.secondsSpent))));
   return { ok: true };
 }
 
 export async function finishAttemptAction(input: { attemptId: string }): Promise<ActionState> {
   const user = await requireUser();
-  const attempt = getAttempt(user.id, input.attemptId);
+  const attempt = await getAttempt(user.id, input.attemptId);
   if (!attempt) return { ok: false, error: "Tentativa não encontrada." };
   if (attempt.finished_at) return { ok: false, error: "Tentativa já finalizada." };
-  const quiz = getQuiz(user.id, attempt.quiz_id);
-  const ids = quizQuestionIds(attempt.quiz_id, user.id);
-  const questions = ids
-    .map((id) => getQuestion(user.id, id))
-    .filter((q): q is NonNullable<typeof q> => q !== null);
-  const answers = listAnswers(user.id, attempt.id).map((a) => ({
+  const quiz = await getQuiz(user.id, attempt.quiz_id);
+  const ids = await quizQuestionIds(attempt.quiz_id, user.id);
+  const questions = (await Promise.all(ids.map((id) => getQuestion(user.id, id)))).filter(
+    (q): q is NonNullable<typeof q> => q !== null,
+  );
+  const answers = (await listAnswers(user.id, attempt.id)).map((a) => ({
     questionId: a.question_id,
     chosenIndex: a.chosen_index,
     secondsSpent: a.seconds_spent,
@@ -177,9 +184,9 @@ export async function finishAttemptAction(input: { attemptId: string }): Promise
     quiz && quiz.time_limit_seconds > 0
       ? quiz.time_limit_seconds
       : Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000);
-  finalizeAttempt(user.id, attempt.id, graded.correct, answered, graded.total, Math.max(0, duration));
-  const granted = awardXp(user.id, "simulado_finalizado", "quiz_attempts", attempt.id);
-  checkCountAchievements(user.id);
+  await finalizeAttempt(user.id, attempt.id, graded.correct, answered, graded.total, Math.max(0, duration));
+  const granted = await awardXp(user.id, "simulado_finalizado", "quiz_attempts", attempt.id);
+  await checkCountAchievements(user.id);
   revalidatePath("/simulados");
   revalidatePath("/desempenho");
   return {
@@ -189,12 +196,14 @@ export async function finishAttemptAction(input: { attemptId: string }): Promise
 }
 
 export async function attemptReport(userId: string, attemptId: string) {
-  const attempt = getAttempt(userId, attemptId);
+  const attempt = await getAttempt(userId, attemptId);
   if (!attempt) return null;
-  const quiz = getQuiz(userId, attempt.quiz_id);
-  const ids = quizQuestionIds(attempt.quiz_id, userId);
-  const questions = ids.map((id) => getQuestion(userId, id)).filter((q): q is NonNullable<typeof q> => q !== null);
-  const answers = listAnswers(userId, attemptId);
+  const quiz = await getQuiz(userId, attempt.quiz_id);
+  const ids = await quizQuestionIds(attempt.quiz_id, userId);
+  const questions = (await Promise.all(ids.map((id) => getQuestion(userId, id)))).filter(
+    (q): q is NonNullable<typeof q> => q !== null,
+  );
+  const answers = await listAnswers(userId, attemptId);
   const graded = gradeQuiz(
     questions.map((q) => ({ id: q.id, correctIndex: q.correct_index, subjectId: q.subject_id })),
     answers.map((a) => ({ questionId: a.question_id, chosenIndex: a.chosen_index, secondsSpent: a.seconds_spent })),

@@ -25,7 +25,7 @@ export async function searchUsersAction(query: string) {
 export async function sendFriendRequestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
   const to = String(formData.get("to") ?? "");
-  const result = sendFriendRequest(user.id, to);
+  const result = await sendFriendRequest(user.id, to);
   revalidatePath("/amigos");
   return result.ok ? { ok: true, message: "Solicitação enviada." } : { ok: false, error: result.error };
 }
@@ -37,7 +37,7 @@ export async function respondFriendRequestAction(_prev: ActionState, formData: F
   if (!["aceite", "recusado", "cancelado"].includes(decision)) {
     return { ok: false, error: "Ação inválida." };
   }
-  const result = decideFriendRequest(user.id, id, decision);
+  const result = await decideFriendRequest(user.id, id, decision);
   revalidatePath("/amigos");
   if (!result.ok) return { ok: false, error: result.error };
   const messages = { aceite: "Amizade aceita.", recusado: "Solicitação recusada.", cancelado: "Solicitação cancelada." };
@@ -46,28 +46,28 @@ export async function respondFriendRequestAction(_prev: ActionState, formData: F
 
 export async function removeFriendAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  removeFriendship(user.id, String(formData.get("id") ?? ""));
+  await removeFriendship(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/amigos");
 }
 
 export async function blockUserAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();
-  const result = blockUser(user.id, String(formData.get("id") ?? ""));
+  const result = await blockUser(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/amigos");
   return result.ok ? { ok: true, message: "Usuário bloqueado. Amizade e solicitações foram removidas." } : { ok: false, error: result.error };
 }
 
 export async function unblockUserAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  unblockUser(user.id, String(formData.get("id") ?? ""));
+  await unblockUser(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/amigos");
 }
 
 export async function friendsPageData(userId: string) {
   return {
-    friends: listFriends(userId),
-    requests: listPendingRequests(userId),
-    blocks: listBlocks(userId),
+    friends: await listFriends(userId),
+    requests: await listPendingRequests(userId),
+    blocks: await listBlocks(userId),
   };
 }
 
@@ -82,6 +82,6 @@ export async function blockUserFormAction(formData: FormData): Promise<void> {
 
 export async function unblockUserFormAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  unblockUser(user.id, String(formData.get("id") ?? ""));
+  await unblockUser(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/amigos");
 }

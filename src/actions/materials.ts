@@ -89,7 +89,7 @@ export async function saveMaterialAction(_prev: ActionState, formData: FormData)
     .map((t) => t.trim())
     .filter(Boolean);
 
-  const id = createMaterial(user.id, {
+  const id = await createMaterial(user.id, {
     title: parsed.data.title,
     description: parsed.data.description ?? "",
     type,
@@ -102,8 +102,8 @@ export async function saveMaterialAction(_prev: ActionState, formData: FormData)
     tags,
     aiGenerated: parsed.data.aiGenerated,
   });
-  const granted = awardXp(user.id, "material_criado", "materials", id);
-  checkCountAchievements(user.id);
+  const granted = await awardXp(user.id, "material_criado", "materials", id);
+  await checkCountAchievements(user.id);
   revalidatePath("/biblioteca");
   revalidatePath("/central");
   return { ok: true, message: `Material salvo.${granted > 0 ? ` +${granted} XP.` : ""}`, data: { id } };
@@ -123,7 +123,7 @@ export async function updateMaterialAction(_prev: ActionState, formData: FormDat
     aiGenerated: false,
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  const ok = updateMaterial(user.id, id, {
+  const ok = await updateMaterial(user.id, id, {
     title: parsed.data.title,
     description: parsed.data.description ?? "",
     contentText: parsed.data.contentText ?? "",
@@ -139,30 +139,30 @@ export async function updateMaterialAction(_prev: ActionState, formData: FormDat
 export async function toggleFavoriteAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material) return;
-  updateMaterial(user.id, id, { favorite: material.favorite !== 1 });
+  await updateMaterial(user.id, id, { favorite: material.favorite !== 1 });
   revalidatePath("/biblioteca");
 }
 
 export async function archiveMaterialAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  updateMaterial(user.id, String(formData.get("id") ?? ""), { archived: true });
+  await updateMaterial(user.id, String(formData.get("id") ?? ""), { archived: true });
   revalidatePath("/biblioteca");
 }
 
 export async function deleteMaterialAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  deleteMaterial(user.id, String(formData.get("id") ?? ""));
+  await deleteMaterial(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/biblioteca");
 }
 
 export async function duplicateMaterialAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material) return;
-  createMaterial(user.id, {
+  await createMaterial(user.id, {
     title: `${material.title} (cópia)`,
     description: material.description,
     type: material.type as "nota" | "link" | "arquivo" | "flashcard",
@@ -181,17 +181,17 @@ export async function setVisibilityAction(_prev: ActionState, formData: FormData
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   const visibility = String(formData.get("visibility") ?? "privado");
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material) return { ok: false, error: "Material não encontrado." };
   if (visibility === "privado") {
-    revokeShare(user.id, id);
+    await revokeShare(user.id, id);
     revalidatePath("/biblioteca");
     return { ok: true, message: "Material voltou a ser privado." };
   }
   if (!["amigos", "link", "publico"].includes(visibility)) {
     return { ok: false, error: "Visibilidade inválida." };
   }
-  const token = enableShare(user.id, id, visibility as "amigos" | "link" | "publico");
+  const token = await enableShare(user.id, id, visibility as "amigos" | "link" | "publico");
   revalidatePath("/biblioteca");
   return {
     ok: true,
@@ -202,17 +202,17 @@ export async function setVisibilityAction(_prev: ActionState, formData: FormData
 
 export async function revokeShareAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  revokeShare(user.id, String(formData.get("id") ?? ""));
+  await revokeShare(user.id, String(formData.get("id") ?? ""));
   revalidatePath("/biblioteca");
 }
 
 export async function scheduleMaterialReviewAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material) return;
   const due = addDaysStr(todayStr(user.timezone), 1);
-  scheduleReview(user.id, {
+  await scheduleReview(user.id, {
     title: material.title,
     subjectId: material.subject_id,
     sourceType: "material",
@@ -229,7 +229,7 @@ function addDaysStr(dateStr: string, days: number): string {
 
 /** Abre arquivo privado: só o dono autenticado acessa; nunca há URL pública permanente. */
 export async function openOwnedFile(userId: string, materialId: string): Promise<{ path: string; name: string } | null> {
-  const material = getMaterial(userId, materialId);
+  const material = await getMaterial(userId, materialId);
   if (!material || !material.file_path) return null;
   return { path: material.file_path, name: material.title };
 }
@@ -243,20 +243,19 @@ export type AccessCheck =
 
 /** Regra central de acesso a materiais compartilhados. */
 export async function checkMaterialAccess(viewerId: string, materialId: string, token?: string): Promise<AccessCheck> {
-  const own = getMaterial(viewerId, materialId);
+  const own = await getMaterial(viewerId, materialId);
   if (own) return { kind: "owner", material: own };
 
-  const { getDb } = await import("@/lib/db");
-  const row = getDb()
-    .prepare(
-      `SELECT m.*, p.username AS author_username, p.display_name AS author_display
-         FROM materials m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.id = ?`,
-    )
-    .get(materialId) as MaterialRow | undefined;
+  const { queryOne } = await import("@/lib/db");
+  const row = await queryOne<MaterialRow>(
+    `SELECT m.*, p.username AS author_username, p.display_name AS author_display
+       FROM materials m LEFT JOIN profiles p ON p.user_id = m.user_id WHERE m.id = $1`,
+    [materialId],
+  );
   if (!row) return { kind: "denied", reason: "Material não encontrado." };
 
   if (row.visibility === "publico" && row.archived === 0) return { kind: "public", material: row };
-  if (row.visibility === "amigos" && areFriends(viewerId, row.user_id)) return { kind: "friend", material: row };
+  if (row.visibility === "amigos" && (await areFriends(viewerId, row.user_id))) return { kind: "friend", material: row };
   if (
     row.visibility === "link" &&
     row.share_enabled === 1 &&
@@ -274,7 +273,7 @@ export async function copySharedMaterialAction(formData: FormData): Promise<void
   const token = String(formData.get("token") ?? "") || undefined;
   const access = await checkMaterialAccess(user.id, id, token);
   if (access.kind === "denied" || access.kind === "owner") return;
-  copyMaterial(user.id, access.material);
+  await copyMaterial(user.id, access.material);
   revalidatePath("/arquivo");
   revalidatePath("/biblioteca");
 }
@@ -284,6 +283,6 @@ export async function searchPublicMaterials(query?: string): Promise<MaterialRow
 }
 
 export async function sharedWithMeMaterials(userId: string): Promise<MaterialRow[]> {
-  const friends = listFriendIds(userId);
+  const friends = await listFriendIds(userId);
   return listFriendMaterials(userId, friends);
 }

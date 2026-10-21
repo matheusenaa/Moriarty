@@ -17,9 +17,9 @@ export default async function ArquivoPage({
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const params = await searchParams;
-  const friends = listFriendIds(user.id);
-  const fromFriends = listFriendMaterials(user.id, friends);
-  const publics = listPublicMaterials(params.busca);
+  const friends = await listFriendIds(user.id);
+  const fromFriends = await listFriendMaterials(user.id, friends);
+  const publics = await listPublicMaterials(params.busca);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

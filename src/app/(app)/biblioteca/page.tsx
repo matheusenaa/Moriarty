@@ -31,12 +31,12 @@ export default async function BibliotecaPage({
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const params = await searchParams;
-  const materials = listMaterials(user.id, {
+  const materials = await listMaterials(user.id, {
     search: params.busca,
     tag: params.tag,
     subjectId: params.materia,
   });
-  const subjects = listSubjects(user.id);
+  const subjects = await listSubjects(user.id);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">

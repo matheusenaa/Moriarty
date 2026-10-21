@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { queryOne } from "@/lib/db";
 import { getMaterial, countMaterials } from "@/lib/repo/materials";
 import { listSubjects } from "@/lib/repo/planning";
 import { listFriends } from "@/lib/repo/social";
@@ -15,16 +15,18 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
   const user = await getCurrentUser();
   if (!user) redirect("/entrar");
   const { id } = await params;
-  const material = getMaterial(user.id, id);
+  const material = await getMaterial(user.id, id);
   if (!material) notFound();
 
-  const subjects = listSubjects(user.id);
-  const friends = listFriends(user.id);
+  const subjects = await listSubjects(user.id);
+  const friends = await listFriends(user.id);
   const originAuthor =
     material.source_user_id !== null
-      ? (getDb().prepare("SELECT username FROM profiles WHERE user_id = ?").get(material.source_user_id) as
-          | { username: string }
-          | undefined)?.username ?? "desconhecido"
+      ? (
+          await queryOne<{ username: string }>("SELECT username FROM profiles WHERE user_id = $1", [
+            material.source_user_id,
+          ])
+        )?.username ?? "desconhecido"
       : null;
 
   return (
@@ -148,7 +150,7 @@ export default async function MaterialPage({ params }: { params: Promise<{ id: s
       </Card>
 
       <p className="text-xs text-cinza-escuro">
-        Materiais na biblioteca: {countMaterials(user.id)} · Criado em {material.created_at.slice(0, 10)} ·
+        Materiais na biblioteca: {await countMaterials(user.id)} · Criado em {material.created_at.slice(0, 10)} ·
         Atualizado em {material.updated_at.slice(0, 10)}
       </p>
     </div>
