@@ -13,6 +13,7 @@ import { todayStr } from "@/lib/dates";
 import { rankForXp, ACHIEVEMENTS } from "@/lib/xp";
 import { Badge } from "@/components/Badge";
 import { SeedButton } from "@/components/SeedButton";
+import { ehAdmin } from "@/lib/admin";
 
 export default async function PerfilPage() {
   const user = await getCurrentUser();
@@ -24,8 +25,7 @@ export default async function PerfilPage() {
   const streak = await studyStreak(user.id, today);
   const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
-  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  const isAdmin = Boolean(adminEmail) && user.email.trim().toLowerCase() === adminEmail;
+  const isAdmin = ehAdmin(user.email);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

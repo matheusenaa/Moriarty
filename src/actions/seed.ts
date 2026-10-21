@@ -5,23 +5,19 @@ import { pathToFileURL } from "url";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { getPool } from "@/lib/db";
+import { ehAdmin } from "@/lib/admin";
 
 export type SeedState = { ok: boolean; message: string };
 
 /**
  * Roda o seed do catálogo (idempotente) direto pela interface, sem terminal.
  *
- * Segurança: só o usuário cujo e-mail bate com ADMIN_EMAIL pode executar.
- * Se ADMIN_EMAIL não estiver configurado, ninguém pode (recurso desativado).
+ * Segurança: só administradores (ver src/lib/admin.ts) podem executar.
  * Roda no servidor (Vercel), que tem acesso aberto ao banco.
  */
 export async function rodarSeedAction(): Promise<SeedState> {
   const user = await requireUser();
-  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  if (!adminEmail) {
-    return { ok: false, message: "Recurso desativado (ADMIN_EMAIL não configurado)." };
-  }
-  if (user.email.trim().toLowerCase() !== adminEmail) {
+  if (!ehAdmin(user.email)) {
     return { ok: false, message: "Você não tem permissão para esta ação." };
   }
 
