@@ -104,9 +104,10 @@ export async function reviewSummary(
     "SELECT COUNT(*) c FROM review_items WHERE user_id = $1 AND state != 'concluida' AND due_date = $2",
     [userId, today],
   );
+  const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const done30 = await count(
-    "SELECT COUNT(*) c FROM review_history WHERE user_id = $1 AND reviewed_at >= now() - interval '30 days'",
-    [userId],
+    "SELECT COUNT(*) c FROM review_history WHERE user_id = $1 AND reviewed_at >= $2",
+    [userId, since30],
   );
   return { overdue, dueToday, done30 };
 }

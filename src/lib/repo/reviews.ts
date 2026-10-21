@@ -27,11 +27,12 @@ export function getReview(userId: string, id: string): Promise<ReviewRow | null>
 
 /** Fila: atrasadas primeiro, depois as que vencem hoje, depois as próximas. */
 export function reviewQueue(userId: string, today: string): Promise<ReviewRow[]> {
+  const limit = addDaysStr(today, 3);
   return query<ReviewRow>(
     `SELECT * FROM review_items
-      WHERE user_id = $1 AND state != 'concluida' AND due_date <= $2::date + interval '3 days'
+      WHERE user_id = $1 AND state != 'concluida' AND due_date <= $2
       ORDER BY due_date ASC`,
-    [userId, today],
+    [userId, limit],
   );
 }
 
