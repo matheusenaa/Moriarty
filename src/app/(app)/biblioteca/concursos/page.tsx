@@ -4,6 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { searchCollections, collectionCounts, STATUS_LABEL, CATEGORY_LABEL } from "@/lib/repo/catalog";
 import { Card, CardTitle, CardDescription } from "@/components/Card";
 import { Badge } from "@/components/Badge";
+import { SeloConcurso } from "@/components/SeloConcurso";
+import { FraseMilitar } from "@/components/FraseMilitar";
+import { classeTema, identificarConcurso } from "@/lib/temas";
 
 const STATUS_TONE: Record<string, "petroleo" | "latiao" | "neutro" | "alerta"> = {
   vigente: "petroleo",
@@ -29,7 +32,8 @@ export default async function ConcursosPage({
     <div className="mx-auto max-w-6xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-titulo text-3xl font-bold">Biblioteca de concursos</h1>
+          <SeloConcurso className="mb-2" />
+          <h1 className="font-titulo text-3xl font-bold">Concursos</h1>
           <p className="text-sm text-cinza">
             Conteúdo inicial de preparação PMDF, Polícia Federal e PRF. Notas, flashcards e
             questões autorais, com fonte e data de verificação em cada trilha.
@@ -98,17 +102,22 @@ export default async function ConcursosPage({
           {await Promise.all(
             collections.map(async (c) => {
             const counts = await collectionCounts(c.id);
+            const id = identificarConcurso(c.slug);
             return (
-              <Card key={c.id} className="flex flex-col">
+              <Link
+                key={c.id}
+                href={`/biblioteca/concursos/${c.slug}`}
+                className={`${classeTema(id)} cartao-tematico marca-agua flex flex-col p-4 sm:p-5`}
+                data-marca={id.sigla}
+              >
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base">
-                    <Link href={`/biblioteca/concursos/${c.slug}`} className="hover:text-latao-claro">
-                      {c.title}
-                    </Link>
-                  </CardTitle>
+                  <CardTitle className="text-base hover:text-latao-claro">{c.title}</CardTitle>
                   <Badge tone={STATUS_TONE[c.status] ?? "neutro"}>
                     {STATUS_LABEL[c.status] ?? c.status}
                   </Badge>
+                </div>
+                <div className="mt-2">
+                  <SeloConcurso identidade={id} />
                 </div>
                 <CardDescription className="mt-2 flex-1">{c.summary}</CardDescription>
                 <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
@@ -120,13 +129,8 @@ export default async function ConcursosPage({
                 <p className="mt-3 text-xs text-cinza-escuro">
                   {c.edital_ref} · verificado em {c.checked_at}
                 </p>
-                <Link
-                  href={`/biblioteca/concursos/${c.slug}`}
-                  className="mt-3 inline-block text-sm text-latao underline"
-                >
-                  Abrir trilha
-                </Link>
-              </Card>
+                <span className="mt-3 inline-block text-sm text-latao underline">Abrir trilha</span>
+              </Link>
               );
             }),
           )}
@@ -155,6 +159,8 @@ export default async function ConcursosPage({
           Rótulos de categoria: {Object.values(CATEGORY_LABEL).join(" · ")}
         </p>
       </Card>
+
+      <FraseMilitar />
     </div>
   );
 }

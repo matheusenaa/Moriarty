@@ -15,6 +15,15 @@
   --color-alerta: #a33b2e;
   --color-alerta-claro: #c9584a;
 
+  /* Cores de insígnia por corporação (uso discreto, apenas como acento) */
+  --color-pmdf: #1e3a5f;
+  --color-pmdf-acento: #c9a227;
+  --color-prf: #1f4d3a;
+  --color-prf-acento: #d4b23c;
+  --color-pf: #2b3323;
+  --color-pf-acento: #7f9a5c;
+  --color-operacional: #5a6b7a;
+
   --font-titulo: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --font-corpo: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
@@ -161,4 +170,97 @@ h1, h2, h3, h4 {
     animation: none !important;
   }
   .cena-progresso { stroke-dashoffset: 0; }
+}
+
+/* ===== Camada temática militar (sutil, não compete com a leitura) =====
+
+   Tudo aqui é insinuação: manchas de camuflado em opacidade muito baixa,
+   tarjas de acento como bordas finas e grid de "dossiê operacional".
+   Nada reproduz brasão, distintivo ou marca de corporação. */
+
+/* Fundo global de "camuflado noturno": manchas orgânicas discretas. */
+.textura-operacional {
+  background-color: var(--color-carvao);
+  background-image:
+    radial-gradient(ellipse 60% 45% at 12% 8%, rgba(90, 107, 122, 0.05), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 88% 18%, rgba(127, 154, 92, 0.04), transparent 55%),
+    radial-gradient(ellipse 55% 50% at 30% 92%, rgba(31, 77, 58, 0.045), transparent 60%),
+    radial-gradient(ellipse 45% 40% at 78% 88%, rgba(30, 58, 95, 0.05), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Grid finíssimo de "dossiê/planta operacional" para cabeçalhos. */
+.textura-dossie {
+  background-image:
+    linear-gradient(90deg, rgba(201, 162, 39, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(201, 162, 39, 0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Variantes por corporação: só ajustam a variável de acento. */
+.tema-pmdf { --acento-faixa: var(--color-pmdf-acento); --tema-base: var(--color-pmdf); }
+.tema-prf { --acento-faixa: var(--color-prf-acento); --tema-base: var(--color-prf); }
+.tema-pf { --acento-faixa: var(--color-pf-acento); --tema-base: var(--color-pf); }
+.tema-operacional { --acento-faixa: var(--color-operacional); --tema-base: var(--color-operacional); }
+
+/* Selo de concurso: pequena etiqueta tipo "identificação operacional". */
+.selo-concurso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--acento-faixa, var(--color-latao)) 45%, transparent);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--acento-faixa, var(--color-latao)) 80%, var(--color-pergaminho));
+  background: color-mix(in srgb, var(--acento-faixa, var(--color-latao)) 8%, transparent);
+}
+
+/* Marca d'água textual diagonal, muito apagada (frases de motivação). */
+.marca-agua {
+  position: relative;
+  overflow: hidden;
+}
+.marca-agua::after {
+  content: attr(data-marca);
+  position: absolute;
+  right: 0.5rem;
+  bottom: -0.4rem;
+  font-family: var(--font-titulo);
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--acento-faixa, var(--color-latao)) 7%, transparent);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+}
+
+/* Cartão com faixa de acento por corporação. */
+.cartao-tematico {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--acento-faixa, var(--color-latao)) 22%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tema-base, var(--color-grafite)) 22%, var(--color-grafite)),
+    color-mix(in srgb, var(--color-grafite) 70%, var(--color-carvao))
+  );
+  border-radius: var(--radius-cartao);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.cartao-tematico::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--acento-faixa, var(--color-latao)), transparent);
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marca-agua::after { transform: none; }
 }

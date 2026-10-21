@@ -14,6 +14,9 @@ import { saveCatalogItemAction, scheduleCatalogItemReviewAction, importCollectio
 import { CatalogQuestion } from "@/components/CatalogQuestion";
 import { CatalogFlashcard, splitFlashcard } from "@/components/CatalogFlashcard";
 import { CatalogProgressButtons } from "@/components/CatalogProgressButtons";
+import { SeloConcurso } from "@/components/SeloConcurso";
+import { FraseMilitar } from "@/components/FraseMilitar";
+import { classeTema, identificarConcurso } from "@/lib/temas";
 
 const STATUS_TONE: Record<string, "petroleo" | "latiao" | "neutro" | "alerta"> = {
   vigente: "petroleo",
@@ -40,18 +43,22 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
   const trackableCount = notas.length + flashcards.length;
   const doneCount = progressCounts.lido + progressCounts.dominado;
   const pct = trackableCount > 0 ? Math.round((doneCount / trackableCount) * 100) : 0;
+  const identidade = identificarConcurso(c.slug);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <header>
+    <div className={`${classeTema(identidade)} mx-auto max-w-4xl space-y-6`}>
+      <header className="cartao-tematico marca-agua p-4 sm:p-5" data-marca={identidade.sigla}>
         <Link href="/biblioteca/concursos" className="text-sm text-latao underline">
-          ← Biblioteca de concursos
+          ← Concursos
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <h1 className="font-titulo text-3xl font-bold">{c.title}</h1>
           <Badge tone={STATUS_TONE[c.status] ?? "neutro"}>
             {STATUS_LABEL[c.status] ?? c.status}
           </Badge>
+        </div>
+        <div className="mt-2">
+          <SeloConcurso identidade={identidade} />
         </div>
         <p className="mt-2 text-sm text-cinza">{c.summary}</p>
         <form action={importCollectionSubjectsAction} className="mt-3">
@@ -236,6 +243,8 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
         oficiais. Status e data de verificação estão sempre visíveis; confira o edital mais recente
         antes da prova.
       </footer>
+
+      <FraseMilitar slug={c.slug} />
     </div>
   );
 }
