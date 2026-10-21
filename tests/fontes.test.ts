@@ -8,7 +8,7 @@ import { buscarFontes, normalizar, FONTES_OFICIAIS } from "@/lib/fontes";
 
 describe("catálogo de fontes oficiais", () => {
   it("tem todas as entradas apontando para fontes oficiais em https", () => {
-    expect(FONTES_OFICIAIS.length).toBeGreaterThanOrEqual(10);
+    expect(FONTES_OFICIAIS.length).toBeGreaterThanOrEqual(25);
     for (const f of FONTES_OFICIAIS) {
       expect(f.url.startsWith("https://")).toBe(true);
       expect(f.norma.length).toBeGreaterThan(0);
@@ -65,6 +65,23 @@ describe("buscarFontes", () => {
     const r = buscarFontes("inquerito policial prazo");
     for (let i = 1; i < r.length; i++) {
       expect(r[i - 1].score).toBeGreaterThanOrEqual(r[i].score);
+    }
+  });
+
+  it("encontra as leis especiais mais cobradas", () => {
+    const casos: [string, string][] = [
+      ["peculato", "cp-admin"],
+      ["abuso de autoridade", "abuso-autoridade"],
+      ["lavagem de dinheiro", "lavagem"],
+      ["organizacao criminosa", "org-criminosa"],
+      ["improbidade administrativa", "improbidade"],
+      ["tortura", "tortura"],
+      ["juizados especiais", "juizados"],
+      ["crimes de transito", "ctb-crimes"],
+    ];
+    for (const [consulta, id] of casos) {
+      const r = buscarFontes(consulta, 3);
+      expect(r.map((x) => x.id), `falhou para "${consulta}"`).toContain(id);
     }
   });
 });
