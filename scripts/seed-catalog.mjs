@@ -784,7 +784,10 @@ export async function seedCatalogPg(client) {
   let inserted = 0;
   let itemCount = 0;
 
-  for (const col of COLLECTIONS) {
+  const { TRILHAS_ADICIONAIS } = await import("./conteudo-trilhas.mjs");
+  const todasColecoes = [...COLLECTIONS, ...TRILHAS_ADICIONAIS];
+
+  for (const col of todasColecoes) {
     const colId = `catalog:${col.slug}`;
     const up = await client.query(
       `INSERT INTO catalog_collections
@@ -904,5 +907,5 @@ export async function seedCatalogPg(client) {
     }
   }
 
-  return { collections: COLLECTIONS.length, items: itemCount, inserted };
+  return { collections: todasColecoes.length, items: itemCount, inserted };
 }

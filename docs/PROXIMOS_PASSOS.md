@@ -14,7 +14,6 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 
 ## Médio prazo (produto)
 
-- **Exportar trilha:** gerar PDF/roteiro de estudo a partir de uma coleção.
 - **Contribuição de conteúdo:** fluxo com revisão para usuários sugerirem notas/questões, com
   atribuição e moderação (mantendo a regra de direitos autorais).
 
@@ -23,6 +22,10 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Busca e filtro de trilhas (texto + status) — `searchCollections`.
 - "Importar trilha para o plano" (cria matérias do usuário, idempotente por nome).
 - Progresso por trilha (notas lidas / flashcards dominados) em `catalog_progress`.
+- Roteiro de estudo exportável por trilha (HTML imprimível para PDF + download `.md`).
+- Agente de busca em fontes oficiais fixas (determinístico, sem IA paga) — 28 leis.
+- Trilhas adicionais: PCDF Agente/Investigador, PMDF Soldado (praças) e Polícia Penal.
+- Seed executável pela interface (botão em `/admin`), sem terminal e sem colar SQL.
 
 ## Longo prazo (plataforma)
 

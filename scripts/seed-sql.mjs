@@ -11,6 +11,7 @@ import fs from "fs";
 import path from "path";
 import { COLLECTIONS, CHECKED_AT } from "./seed-catalog.mjs";
 import { EXTRAS_POR_SLUG } from "./conteudo-extra.mjs";
+import { TRILHAS_ADICIONAIS } from "./conteudo-trilhas.mjs";
 
 const esc = (v) => {
   if (v === null || v === undefined) return "NULL";
@@ -28,7 +29,7 @@ lines.push("");
 lines.push("begin;");
 lines.push("");
 
-for (const col of COLLECTIONS) {
+for (const col of [...COLLECTIONS, ...TRILHAS_ADICIONAIS]) {
   const colId = `catalog:${col.slug}`;
   lines.push(`-- Trilha: ${col.title}`);
   lines.push(
@@ -139,4 +140,4 @@ lines.push("");
 const out = path.join(process.cwd(), "db", "postgres", "seed_catalogo.sql");
 fs.writeFileSync(out, lines.join("\n"), "utf8");
 console.log(`Gerado: ${out}`);
-console.log(`Coleções: ${COLLECTIONS.length} · linhas SQL: ${lines.length}`);
+console.log(`Coleções: ${[...COLLECTIONS, ...TRILHAS_ADICIONAIS].length} · linhas SQL: ${lines.length}`);

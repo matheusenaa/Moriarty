@@ -7,7 +7,7 @@
  * é evocar o universo militar/policial sem imitar símbolos institucionais.
  */
 
-export type TemaConcurso = "pmdf" | "prf" | "pf" | "operacional";
+export type TemaConcurso = "pmdf" | "prf" | "pf" | "pc" | "penal" | "operacional";
 
 export type IdentidadeConcurso = {
   tema: TemaConcurso;
@@ -71,6 +71,32 @@ const IDENTIDADES: Record<TemaConcurso, IdentidadeConcurso> = {
       "Foco no processo, confiança no resultado.",
     ],
   },
+  pc: {
+    tema: "pc",
+    sigla: "PC",
+    rotulo: "Polícia Civil",
+    lema: "Investigação, técnica e prova",
+    descricao: "Preparação para carreiras de Polícia Civil (agente, investigador, escrivão).",
+    frases: [
+      "A prova se constrói com método, não com sorte.",
+      "Investigar bem começa por estudar melhor.",
+      "Detalhe a detalhe, o caso se resolve.",
+      "Técnica e paciência: o inquérito do estudo.",
+    ],
+  },
+  penal: {
+    tema: "penal",
+    sigla: "PP",
+    rotulo: "Polícia Penal",
+    lema: "Disciplina, segurança e ressocialização",
+    descricao: "Preparação para carreiras de Polícia Penal / Agente Penitenciário.",
+    frases: [
+      "Segurança se faz com preparo constante.",
+      "Firmeza na rotina, firmeza no resultado.",
+      "Disciplina é a guarda do próprio objetivo.",
+      "Constância: a chave que abre a aprovação.",
+    ],
+  },
 };
 
 /** Infere a identidade a partir do slug da trilha (catalog_collections.slug). */
@@ -78,6 +104,10 @@ export function identificarConcurso(slug: string): IdentidadeConcurso {
   const s = slug.toLowerCase();
   if (s.includes("pmdf")) return IDENTIDADES.pmdf;
   if (s.includes("prf")) return IDENTIDADES.prf;
+  if (s.includes("penal") || s.includes("penitenciar")) return IDENTIDADES.penal;
+  if (s.includes("pcdf") || s.includes("pc-") || s.includes("policia-civil")) {
+    return IDENTIDADES.pc;
+  }
   if (s.includes("pf-") || s.includes("policial-federal") || s.endsWith("pf")) {
     return IDENTIDADES.pf;
   }

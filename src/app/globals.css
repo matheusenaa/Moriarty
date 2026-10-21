@@ -22,6 +22,10 @@
   --color-prf-acento: #d4b23c;
   --color-pf: #2b3323;
   --color-pf-acento: #7f9a5c;
+  --color-pc: #3a2f4f;
+  --color-pc-acento: #b39ddb;
+  --color-penal: #4a3524;
+  --color-penal-acento: #c99a3c;
   --color-operacional: #5a6b7a;
 
   --font-titulo: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
@@ -201,6 +205,8 @@ h1, h2, h3, h4 {
 .tema-pmdf { --acento-faixa: var(--color-pmdf-acento); --tema-base: var(--color-pmdf); }
 .tema-prf { --acento-faixa: var(--color-prf-acento); --tema-base: var(--color-prf); }
 .tema-pf { --acento-faixa: var(--color-pf-acento); --tema-base: var(--color-pf); }
+.tema-pc { --acento-faixa: var(--color-pc-acento); --tema-base: var(--color-pc); }
+.tema-penal { --acento-faixa: var(--color-penal-acento); --tema-base: var(--color-penal); }
 .tema-operacional { --acento-faixa: var(--color-operacional); --tema-base: var(--color-operacional); }
 
 /* Selo de concurso: pequena etiqueta tipo "identificação operacional". */

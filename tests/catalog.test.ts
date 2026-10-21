@@ -13,6 +13,7 @@ process.env.DATABASE_URL =
   "postgresql://postgres:postgres@localhost:5432/moriarty_test";
 
 const requiredSlugs = ["pmdf-cfo", "pf-policial-2025", "prf-policial"];
+const extraSlugs = ["pcdf-agente", "pmdf-soldado", "policia-penal"];
 
 let catalog: typeof import("@/lib/repo/catalog");
 
@@ -31,6 +32,11 @@ describe("catálogo de concursos — conteúdo inicial", () => {
   it("cria as três trilhas principais (PMDF, PF, PRF)", async () => {
     const slugs = (await catalog.listCollections()).map((c) => c.slug);
     for (const slug of requiredSlugs) expect(slugs).toContain(slug);
+  });
+
+  it("cria as trilhas adicionais (PCDF, PMDF Soldado, Polícia Penal)", async () => {
+    const slugs = (await catalog.listCollections()).map((c) => c.slug);
+    for (const slug of extraSlugs) expect(slugs).toContain(slug);
   });
 
   it("cada trilha tem fonte, status e data de verificação preenchidos", async () => {
