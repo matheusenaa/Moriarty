@@ -163,6 +163,29 @@ estar fechada e o comando acima falha com `connect ETIMEDOUT ...:5432`. Nesse ca
 > Se o bloqueio for da rede **do provedor de deploy**, use o *Transaction Pooler* (porta 6543) do
 > Supabase como `DATABASE_URL`.
 
+#### Alternativa sem SQL Editor: seed via endpoint HTTP
+
+Se você **não quiser** colar arquivos no SQL Editor, use o endpoint de seed — ele roda o seed
+idempotente **dentro da Vercel** (que tem rede aberta ao Supabase). Não precisa de acesso local à
+porta 5432.
+
+1. Na Vercel, em **Settings → Environment Variables**, adicione uma variável secreta:
+   - `SEED_TOKEN` = uma string longa e aleatória (guarde o valor).
+2. Faça **Redeploy** para a variável valer.
+3. Chame o endpoint (troque a URL e o token):
+
+   ```powershell
+   curl.exe -X POST https://SEU-APP.vercel.app/api/admin/seed `
+     -H "x-seed-token: SEU_TOKEN"
+   ```
+
+   Retorno esperado: `{"ok":true,"collections":3,"items":...,"inserted":...}`.
+
+4. Rode quantas vezes quiser: o seed é **idempotente** (`ON CONFLICT`), então não duplica nada.
+
+> Segurança: sem `SEED_TOKEN` configurado o endpoint retorna 404 (desativado). Com o token errado,
+> 401. Depois de migrar, você pode **remover** a variável `SEED_TOKEN` para desativar de vez.
+
 ---
 
 ## Etapa 5 — Rodar os testes contra o Postgres do Supabase
