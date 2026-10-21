@@ -61,6 +61,22 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
           <SeloConcurso identidade={identidade} />
         </div>
         <p className="mt-2 text-sm text-cinza">{c.summary}</p>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <a
+            href={`/biblioteca/concursos/${c.slug}/roteiro`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-latao/40 px-4 py-2 text-latao hover:bg-latao/10"
+          >
+            Gerar roteiro de estudo (imprimir/salvar PDF)
+          </a>
+          <a
+            href={`/biblioteca/concursos/${c.slug}/roteiro?formato=md`}
+            className="text-cinza underline hover:text-pergaminho"
+          >
+            baixar em Markdown (.md)
+          </a>
+        </div>
         <form action={importCollectionSubjectsAction} className="mt-3">
           <input type="hidden" name="slug" value={c.slug} />
           <button
