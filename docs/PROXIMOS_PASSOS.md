@@ -32,6 +32,8 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Seed executável pela interface (botão em `/admin`), sem terminal e sem colar SQL.
 - Testes de integridade do conteúdo (`tests/conteudo.test.ts`, sem banco) e flashcards nas trilhas
   novas (pcdf-agente, pmdf-soldado, policia-penal).
+- Guarda da fronteira cliente/servidor (`tests/fronteira-cliente-servidor.test.ts`): impede que um
+  server component chame função exportada por um módulo `"use client"` (quebra em runtime).
 
 ## Longo prazo (plataforma)
 
