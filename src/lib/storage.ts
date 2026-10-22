@@ -43,6 +43,10 @@ export type StatusStorage = {
   bucket: string;
   /** null quando não há Supabase configurado; true/false quando o bucket foi testado. */
   bucketOk: boolean | null;
+  /** HTTP status da verificação do bucket (null quando não há Supabase configurado). */
+  status?: number;
+  /** Nomes dos buckets visíveis no projeto (só quando o bucket esperado não foi encontrado). */
+  buckets?: string[];
   erro?: string;
 };
 
@@ -54,11 +58,26 @@ export async function verificarStorage(): Promise<StatusStorage> {
     const res = await fetch(`${baseUrl()}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
       headers: cabecalhos(),
     });
+    if (res.ok) return { modo: "supabase", bucket, bucketOk: true, status: res.status };
+
+    // O bucket não foi encontrado: lista os buckets do projeto para diagnóstico.
+    let buckets: string[] = [];
+    try {
+      const lista = await fetch(`${baseUrl()}/storage/v1/bucket`, { headers: cabecalhos() });
+      if (lista.ok) {
+        const json = (await lista.json()) as { name?: string }[];
+        buckets = json.map((b) => String(b.name ?? "")).filter(Boolean);
+      }
+    } catch {
+      buckets = [];
+    }
     return {
       modo: "supabase",
       bucket,
-      bucketOk: res.ok,
-      erro: res.ok ? undefined : `HTTP ${res.status}`,
+      bucketOk: false,
+      status: res.status,
+      buckets,
+      erro: `HTTP ${res.status}`,
     };
   } catch (err) {
     return { modo: "supabase", bucket, bucketOk: false, erro: erroDe(err).slice(0, 120) };

@@ -20,15 +20,24 @@ function errInfo(err: unknown): { code: string | null; message: string } {
 export async function GET() {
   try {
     const ping = await query<{ ok: number }>("SELECT 1 AS ok");
-    const table = await query<{ reg: string | null; rl: string | null }>(
-      "SELECT to_regclass('public.catalog_answers') AS reg, to_regclass('public.auth_rate_limits') AS rl",
+    const table = await query<{ reg: string | null; rl: string | null; qz: string | null }>(
+      `SELECT to_regclass('public.catalog_answers') AS reg,
+              to_regclass('public.auth_rate_limits') AS rl,
+              to_regclass('public.catalog_quiz_attempts') AS qz`,
     );
     const storage = await verificarStorage();
     return NextResponse.json({
       ok: ping[0]?.ok === 1,
       catalogAnswers: table[0]?.reg ?? null,
       rateLimits: table[0]?.rl ?? null,
-      storage: { modo: storage.modo, bucket: storage.bucket, ok: storage.bucketOk, erro: storage.erro },
+      quizAttempts: table[0]?.qz ?? null,
+      storage: {
+        modo: storage.modo,
+        bucket: storage.bucket,
+        ok: storage.bucketOk,
+        erro: storage.erro,
+        buckets: storage.buckets,
+      },
     });
   } catch (err) {
     return NextResponse.json({ ok: false, ...errInfo(err) }, { status: 500 });
