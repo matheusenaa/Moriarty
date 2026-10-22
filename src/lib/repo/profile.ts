@@ -117,6 +117,18 @@ export async function softDeleteUser(userId: string): Promise<void> {
   });
 }
 
+/**
+ * Exclusão FÍSICA da conta (LGPD — direito ao esquecimento).
+ * Remove a linha da tabela users; o ON DELETE CASCADE remove todos os dados
+ * dependentes (progresso, respostas, materiais, sessões, revisões, quiz,
+ * contribuições, amigos, etc.). Ação IRREVERSÍVEL.
+ */
+export async function physicalDeleteUser(userId: string): Promise<void> {
+  await withTransaction(async (client) => {
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+  });
+}
+
 export async function createPasswordReset(
   userId: string,
   tokenHash: string,

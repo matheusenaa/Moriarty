@@ -220,3 +220,21 @@ export async function deleteAccountAction(_prev: ActionState, formData: FormData
   await clearSessionCookie();
   redirect("/entrar");
 }
+
+/** Exclusão FÍSICA (LGPD) — irreversível, remove todos os dados do usuário. */
+export async function physicalDeleteAccountAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const userId = String(formData.get("userId") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (confirm !== "EXCLUIR DEFINITIVAMENTE") {
+    return { ok: false, error: 'Digite EXCLUIR DEFINITIVAMENTE para confirmar a exclusão permanente (LGPD).' };
+  }
+  const { physicalDeleteUser } = await import("@/lib/repo/profile");
+  const { readSession } = await import("@/lib/session");
+  const session = await readSession();
+  if (!session || session.sub !== userId) {
+    return { ok: false, error: "Sessão inválida." };
+  }
+  await physicalDeleteUser(userId);
+  await clearSessionCookie();
+  redirect("/entrar");
+}
