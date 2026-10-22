@@ -38,13 +38,14 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Guarda da fronteira cliente/servidor (`tests/fronteira-cliente-servidor.test.ts`): impede que um
   server component chame função exportada por um módulo `"use client"` (quebra em runtime).
 - Testes de render de UI (Testing Library + jsdom) nos componentes cliente das trilhas.
+- E-mail real de recuperação de senha via Resend (`RESEND_API_KEY`), com link direto para a troca
+  de senha (`/recuperar?token=...`) e queda para o modo manual quando a chave não existe.
 
 ## Longo prazo (plataforma)
 
 - **PostgreSQL/Supabase:** concluído — migrations `0001`–`0004` aplicadas, camada `src/lib/repo/*`
   reescrita com `pg`, autenticação própria e seed portable (`db/postgres/seed_catalogo.sql`).
-- **Rate limiting e e-mail:** proteção anti-abuso nas rotas de auth; envio real do token de
-  recuperação (hoje registrado no log do servidor).
+- **Rate limiting:** proteção anti-abuso nas rotas de auth (login, cadastro, recuperação).
 - **Lembretes por push/e-mail:** hoje apenas notificações internas (sino do app).
 - **Internacionalização:** pt-BR hoje; separar strings para pt-BR/es/en.
 

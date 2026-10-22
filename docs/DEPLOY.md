@@ -281,7 +281,26 @@ O app usa apenas Postgres (sem arquivos em disco), então funciona na Vercel.
    - `AUTH_SECRET` = seu segredo aleatório.
    - `DATABASE_URL` = connection string do Supabase (Session Pooler).
    - `APP_TIMEZONE` = `America/Sao_Paulo`
+   - `RESEND_API_KEY` = chave do Resend (e-mail de recuperação de senha) — opcional.
+   - `EMAIL_FROM` = remetente, ex.: `Moriarty <onboarding@resend.dev>` — opcional.
+   - `APP_URL` = URL pública do app, ex.: `https://moriarty-alpha.vercel.app` — opcional.
 6. Clique em **Deploy**. Ao final, a Vercel mostra a URL pública do app.
+
+### E-mail (Recuperação de senha) — Resend
+
+Sem `RESEND_API_KEY` o app continua funcionando: a recuperação de senha registra o **token no log
+do servidor** (modo manual). Com a chave, o usuário recebe o link por e-mail.
+
+1. Crie a conta em **https://resend.com** e gere a chave em **API Keys** (`re_...`).
+2. Na Vercel (ou Render), adicione as variáveis:
+   - `RESEND_API_KEY` = a chave gerada;
+   - `EMAIL_FROM` = remetente (padrão: `Moriarty <onboarding@resend.dev>`);
+   - `APP_URL` = URL pública do app (é usada para montar o link do e-mail).
+3. **Plano gratuito:** o Resend só envia para o e-mail do titular da conta. Para enviar para
+   qualquer aluno, verifique um domínio no Resend e aponte `EMAIL_FROM` para ele
+   (ex.: `Moriarty <nao-responda@seudominio.com.br>`).
+4. Teste em `/recuperar`: informe um e-mail cadastrado e confira a caixa de entrada. O link leva
+   direto ao formulário de nova senha (`/recuperar?token=...`), válido por 30 minutos e de uso único.
 
 > Se for usar **upload de arquivos** (tipo “arquivo” na Biblioteca), na Vercel o disco é efêmero —
 > o arquivo não persistirá. Para uploads persistentes, use o Supabase Storage (etapa futura) ou a

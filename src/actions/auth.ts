@@ -86,12 +86,41 @@ export async function requestResetAction(_prev: ActionState, formData: FormData)
   const parsed = resetRequestSchema.safeParse({ email: String(formData.get("email") ?? "").trim().toLowerCase() });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const user = await findUserByEmail(parsed.data.email);
-  // Sempre responde sucesso: não revela se a conta existe.
-  if (!user) return { ok: true, message: "Se o e-mail existir, um link de recuperação foi gerado." };
+  // Resposta idêntica exista ou não a conta: não revela se o e-mail está cadastrado.
+  const resposta = {
+    ok: true,
+    message: "Se o e-mail existir, enviamos o link de recuperação para ele.",
+  };
+  if (!user) return resposta;
+
   const token = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const expires = new Date(Date.now() + 1000 * 60 * 30).toISOString();
   await createPasswordReset(user.id, tokenHash, expires);
+
+  const { emailConfigurado, enviarEmail, htmlRecuperacaoSenha, linkRecuperacao } = await import(
+    "@/lib/email"
+  );
+  if (emailConfigurado()) {
+    const link = linkRecuperacao(token);
+    const envio = await enviarEmail({
+      para: user.email,
+      assunto: "Recuperação de senha — Moriarty",
+      html: htmlRecuperacaoSenha(link),
+      texto: `Recebemos um pedido para redefinir a senha da sua conta no Moriarty. Redefina em: ${link} (válido por 30 minutos).`,
+    });
+    if (envio.ok) {
+      console.info(`[recuperacao] e-mail enviado para ${user.email} (id ${envio.id})`);
+      return resposta;
+    }
+    console.error(`[recuperacao] falha no envio de e-mail: ${envio.erro}`);
+    return {
+      ok: true,
+      message:
+        "Se o e-mail existir, enviamos o link de recuperação para ele. Não conseguimos entregar agora — tente novamente em alguns minutos.",
+    };
+  }
+
   // Sem serviço de e-mail configurado: o token fica pronto para o administrador
   // enviar manualmente. A página de recuperação explica isso.
   console.info(`[recuperacao] token para ${user.email}: ${token}`);
