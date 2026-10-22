@@ -75,6 +75,14 @@ export async function markNotificationRead(userId: string, id: string): Promise<
   ]);
 }
 
+/** Marca todas as notificações não lidas do usuário como lidas. */
+export async function markAllNotificationsRead(userId: string): Promise<number> {
+  return execute(
+    "UPDATE notifications SET read_at = $1 WHERE user_id = $2 AND read_at IS NULL",
+    [nowIso(), userId],
+  );
+}
+
 /** Gera lembretes do dia: revisões vencidas/hoje e sessões de hoje. */
 export async function generateDailyReminders(userId: string, today: string): Promise<void> {
   const count = async (sql: string, params: unknown[]) => {

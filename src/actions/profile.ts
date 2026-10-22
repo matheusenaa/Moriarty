@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { updateProfile } from "@/lib/repo/profile";
-import { upsertReminder, listReminders, markNotificationRead } from "@/lib/repo/notifications";
+import { upsertReminder, listReminders, markNotificationRead, markAllNotificationsRead } from "@/lib/repo/notifications";
 import { parseHHMM } from "@/lib/dates";
 import type { ActionState } from "./auth";
 export type { ActionState };
@@ -50,10 +50,16 @@ export async function getReminders(userId: string) {
   return listReminders(userId);
 }
 
-export async function markNotificationReadAction(formData: FormData): Promise<void> {
+export async function markNotificationReadAction(id: string): Promise<void> {
   const user = await requireUser();
-  await markNotificationRead(user.id, String(formData.get("id") ?? ""));
-  revalidatePath("/central");
+  await markNotificationRead(user.id, id);
+  revalidatePath("/", "layout");
+}
+
+export async function markAllNotificationsReadAction(): Promise<void> {
+  const user = await requireUser();
+  await markAllNotificationsRead(user.id);
+  revalidatePath("/", "layout");
 }
 
 export type ExportData = Record<string, unknown>;
