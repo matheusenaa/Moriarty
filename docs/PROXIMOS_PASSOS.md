@@ -54,13 +54,17 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Lembretes configurados no Perfil passaram a ter efeito: o aviso "Hora da revisão" / "Hora da
   sessão de estudo" aparece no sino da plataforma quando o dia e o horário (±30 min) batem, e a
   Central mostra a agenda configurada. O sino também permite marcar lembrete (ou todos) como lidos.
+- Simulado por trilha: sorteio aleatório das questões autorais da trilha, com tempo limite,
+  correção no servidor (o gabarito nunca vai ao navegador), resultado com percentual, tempo usado
+  e explicação de cada questão. As respostas também entram no Desempenho (`catalog_answers`).
+  Tabela `catalog_quiz_attempts` (migração `0006`).
 
 ## Longo prazo (plataforma)
 
-- **PostgreSQL/Supabase:** concluído — migrations `0001`–`0004` aplicadas, camada `src/lib/repo/*`
+- **PostgreSQL/Supabase:** concluído — migrations `0001`–`0005` aplicadas, camada `src/lib/repo/*`
   reescrita com `pg`, autenticação própria e seed portable (`db/postgres/seed_catalogo.sql`).
-  A migration `0005_auth_rate_limits.sql` está pronta e precisa ser aplicada no Supabase
-  (SQL Editor) para ativar os limites; sem ela o app segue funcionando sem limites.
+  A migration `0006_catalog_quiz_attempts.sql` (simulados por trilha) está pronta e precisa ser
+  aplicada no Supabase (SQL Editor); sem ela apenas o simulado fica indisponível.
 - **Lembretes por push/e-mail:** hoje apenas notificações internas (sino do app).
 - **Internacionalização:** pt-BR hoje; separar strings para pt-BR/es/en.
 

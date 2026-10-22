@@ -21,7 +21,8 @@ export async function setupPostgresTest(): Promise<void> {
 
   // Recria o schema do zero: dropa tabelas na ordem inversa de dependência.
   await execute(
-    `DROP TABLE IF EXISTS auth_rate_limits CASCADE;
+    `DROP TABLE IF EXISTS catalog_quiz_attempts CASCADE;
+     DROP TABLE IF EXISTS auth_rate_limits CASCADE;
      DROP TABLE IF EXISTS catalog_answers CASCADE;
      DROP TABLE IF EXISTS catalog_progress CASCADE;
      DROP TABLE IF EXISTS catalog_items CASCADE;

@@ -1,5 +1,10 @@
 /** Embaralhamento e correção de simulados — funções puras e testáveis. */
 
+/** Embaralha uma lista qualquer com semente (determinístico). */
+export function shuffleComSemente<T>(lista: T[], seed: number): T[] {
+  return mulberry32<T>(seed)(lista);
+}
+
 export type QuestionForQuiz = {
   id: string;
   statement: string;

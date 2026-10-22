@@ -88,6 +88,12 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
           >
             Gerar roteiro de estudo (imprimir/salvar PDF)
           </a>
+          <Link
+            href={`/biblioteca/concursos/${c.slug}/simulado`}
+            className="rounded-md border border-white/10 px-4 py-2 text-cinza hover:bg-white/5"
+          >
+            Fazer simulado da trilha
+          </Link>
           <a
             href={`/biblioteca/concursos/${c.slug}/roteiro?formato=md`}
             className="text-cinza underline hover:text-pergaminho"

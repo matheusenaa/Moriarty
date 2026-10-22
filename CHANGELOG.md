@@ -32,6 +32,10 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
   cliente/servidor** (`tests/fronteira-cliente-servidor.test.ts`).
 - **Testes de render das páginas** (`tests/paginas.test.tsx`): as páginas de concursos e de trilha
   são renderizadas de verdade (ReactDOM server) com o repositório mockado.
+- **Simulado por trilha** (`/biblioteca/concursos/[slug]/simulado`): sorteio aleatório das questões
+  autorais, tempo limite, correção no servidor, resultado com percentual/tempo/explicação. As
+  respostas alimentam o Desempenho. Novo `GET /api/health` agora também informa o modo de
+  armazenamento de arquivos (`supabase`/`disco`) e se o bucket existe.
 
 ### Corrigido
 
