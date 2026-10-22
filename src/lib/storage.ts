@@ -41,29 +41,42 @@ export function modoArmazenamento(): ModoArmazenamento {
 export type StatusStorage = {
   modo: ModoArmazenamento;
   bucket: string;
+  /** Ref do projeto Supabase usado (diagnóstico). */
+  projeto?: string;
   /** null quando não há Supabase configurado; true/false quando o bucket foi testado. */
   bucketOk: boolean | null;
   /** HTTP status da verificação do bucket (null quando não há Supabase configurado). */
   status?: number;
+  /** HTTP status da listagem de buckets. */
+  statusLista?: number;
   /** Nomes dos buckets visíveis no projeto (só quando o bucket esperado não foi encontrado). */
   buckets?: string[];
   erro?: string;
 };
 
+/** Ref do projeto (o "lprclzopokdcmoqcdhjz" da URL). */
+export function projetoSupabase(): string {
+  const m = baseUrl().match(/https?:\/\/([a-z0-9-]+)\.supabase\./i);
+  return m ? m[1] : "desconhecido";
+}
+
 /** Testa o bucket configurado (usado no diagnóstico de saúde). */
 export async function verificarStorage(): Promise<StatusStorage> {
   const bucket = bucketStorage();
   if (!storageConfigurado()) return { modo: "disco", bucket, bucketOk: null };
+  const projeto = projetoSupabase();
   try {
     const res = await fetch(`${baseUrl()}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
       headers: cabecalhos(),
     });
-    if (res.ok) return { modo: "supabase", bucket, bucketOk: true, status: res.status };
+    if (res.ok) return { modo: "supabase", bucket, projeto, bucketOk: true, status: res.status };
 
     // O bucket não foi encontrado: lista os buckets do projeto para diagnóstico.
     let buckets: string[] = [];
+    let statusLista = 0;
     try {
       const lista = await fetch(`${baseUrl()}/storage/v1/bucket`, { headers: cabecalhos() });
+      statusLista = lista.status;
       if (lista.ok) {
         const json = (await lista.json()) as { name?: string }[];
         buckets = json.map((b) => String(b.name ?? "")).filter(Boolean);
@@ -74,13 +87,15 @@ export async function verificarStorage(): Promise<StatusStorage> {
     return {
       modo: "supabase",
       bucket,
+      projeto,
       bucketOk: false,
       status: res.status,
+      statusLista,
       buckets,
       erro: `HTTP ${res.status}`,
     };
   } catch (err) {
-    return { modo: "supabase", bucket, bucketOk: false, erro: erroDe(err).slice(0, 120) };
+    return { modo: "supabase", bucket, projeto, bucketOk: false, erro: erroDe(err).slice(0, 120) };
   }
 }
 

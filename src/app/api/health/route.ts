@@ -34,8 +34,10 @@ export async function GET() {
       storage: {
         modo: storage.modo,
         bucket: storage.bucket,
+        projeto: storage.projeto,
         ok: storage.bucketOk,
         erro: storage.erro,
+        statusLista: storage.statusLista,
         buckets: storage.buckets,
       },
     });
