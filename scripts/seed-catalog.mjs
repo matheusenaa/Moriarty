@@ -39,6 +39,19 @@ export const SOURCES = {
     name: "PMDF — Edital nº 03/2025 – DGP/PMDF, de 31/01/2025 (CFO, Cebraspe)",
     url: "https://www.cebraspe.org.br/concursos/pm_df_25_cfo",
   },
+  // Novas fontes para trilhas adicionais
+  pfPerito2025: {
+    name: "Edital PF - Perito Criminal Federal 2025 (Cebraspe / PF)",
+    url: "https://www.gov.br/pf/pt-br/acesso-a-informacao/servidores/concursos/edital/carreira-perito-2025/editais",
+  },
+  pfAdm2025: {
+    name: "Edital PF - Administrativo 2025 (Cebraspe / PF)",
+    url: "https://www.gov.br/pf/pt-br/acesso-a-informacao/servidores/concursos/edital/carreira-administrativa-2025/editais",
+  },
+  pcdfEscrivao2025: {
+    name: "PCDF — Edital Escrivão/Papiloscopista 2025 (Cebraspe / PCDF)",
+    url: "https://www.cebraspe.org.br/concursos/pc_df_25_escrivao",
+  },
 };
 
 /**

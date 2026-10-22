@@ -88,7 +88,7 @@ function dataIso(s: string): boolean {
 }
 
 describe("catálogo — trilhas", () => {
-  it("tem as 6 trilhas com slugs únicos", () => {
+  it("tem as 9 trilhas com slugs únicos", () => {
     const slugs = trilhas.map((t) => t.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
     for (const s of [
@@ -98,10 +98,13 @@ describe("catálogo — trilhas", () => {
       "pcdf-agente",
       "pmdf-soldado",
       "policia-penal",
+      "pf-perito-2025",
+      "pf-adm-2025",
+      "pcdf-escrivao-2025",
     ]) {
       expect(slugs).toContain(s);
     }
-    expect(trilhas.length).toBe(6);
+    expect(trilhas.length).toBe(9);
   });
 
   it("cada trilha tem metadados completos e status válido", () => {
