@@ -13,17 +13,19 @@ function errInfo(err: unknown): { code: string | null; message: string } {
 
 /**
  * Diagnóstico de saúde (sem dados sensíveis). Confirma, em produção, se o banco
- * responde e se a migração 0004 (catalog_answers) já foi aplicada.
+ * responde e se as migrações 0004 (catalog_answers) e 0005 (auth_rate_limits)
+ * já foram aplicadas.
  */
 export async function GET() {
   try {
     const ping = await query<{ ok: number }>("SELECT 1 AS ok");
-    const table = await query<{ reg: string | null }>(
-      "SELECT to_regclass('public.catalog_answers') AS reg",
+    const table = await query<{ reg: string | null; rl: string | null }>(
+      "SELECT to_regclass('public.catalog_answers') AS reg, to_regclass('public.auth_rate_limits') AS rl",
     );
     return NextResponse.json({
       ok: ping[0]?.ok === 1,
       catalogAnswers: table[0]?.reg ?? null,
+      rateLimits: table[0]?.rl ?? null,
     });
   } catch (err) {
     return NextResponse.json({ ok: false, ...errInfo(err) }, { status: 500 });

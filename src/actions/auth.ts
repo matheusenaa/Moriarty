@@ -5,6 +5,13 @@ import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "crypto";
 import { hashPassword, validatePasswordStrength, verifyPassword } from "@/lib/password";
 import { clearSessionCookie, setSessionCookie } from "@/lib/session";
+import { identificadorIp, ipDoRequisicao } from "@/lib/request";
+import {
+  checarLimite,
+  limparBucket,
+  mensagemLimite,
+  registrarTentativa,
+} from "@/lib/rate-limit";
 import {
   consumePasswordReset,
   createPasswordReset,
@@ -18,6 +25,15 @@ import {
 export type ActionState = { ok: boolean; error?: string; message?: string; data?: Record<string, unknown> };
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+/** Limites anti-abuso (ver docs/SEGURANCA.md). */
+const LIMITE = {
+  loginPorConta: 10, // falhas por conta em 15 min
+  loginPorIp: 30, // falhas por IP em 15 min
+  cadastroPorIp: 5, // cadastros por IP em 1 h
+  recuperacaoPorEmail: 3, // pedidos por e-mail em 1 h
+  recuperacaoPorIp: 10, // pedidos por IP em 1 h
+};
 
 const registerSchema = z.object({
   email: z.string().email("E-mail inválido."),
@@ -35,16 +51,26 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
     displayName: String(formData.get("displayName") ?? "").trim(),
     password: String(formData.get("password") ?? ""),
   });
+  // Anti-abuso: no máximo 5 cadastros por IP em 1 hora.
+  const ip = identificadorIp(await ipDoRequisicao());
+  const limite = await checarLimite("cadastro", ip, LIMITE.cadastroPorIp);
+  if (limite.bloqueado) return { ok: false, error: mensagemLimite("cadastro") };
   if (!parsed.success) {
+    await registrarTentativa("cadastro", ip);
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
   const strength = validatePasswordStrength(parsed.data.password);
-  if (!strength.ok) return { ok: false, error: strength.message };
+  if (!strength.ok) {
+    await registrarTentativa("cadastro", ip);
+    return { ok: false, error: strength.message };
+  }
   if (await findUserByEmail(parsed.data.email)) {
+    await registrarTentativa("cadastro", ip);
     // Mensagem genérica para dificultar enumeração de contas.
     return { ok: false, error: "Não foi possível concluir o cadastro. Verifique os dados informados." };
   }
   if (await usernameTaken(parsed.data.username)) {
+    await registrarTentativa("cadastro", ip);
     return { ok: false, error: "Este username já está em uso. Escolha outro." };
   }
   const hash = await hashPassword(parsed.data.password);
@@ -65,10 +91,24 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     password: String(formData.get("password") ?? ""),
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+
+  // Anti-abuso: 10 falhas por conta e 30 por IP em 15 minutos.
+  const ip = identificadorIp(await ipDoRequisicao());
+  const [limiteConta, limiteIp] = await Promise.all([
+    checarLimite("login", parsed.data.email, LIMITE.loginPorConta),
+    checarLimite("login", ip, LIMITE.loginPorIp),
+  ]);
+  if (limiteConta.bloqueado || limiteIp.bloqueado) {
+    return { ok: false, error: mensagemLimite("login") };
+  }
+
   const user = await findUserByEmail(parsed.data.email);
   if (!user || !(await verifyPassword(parsed.data.password, user.password_hash))) {
+    await registrarTentativa("login", parsed.data.email);
+    await registrarTentativa("login", ip);
     return { ok: false, error: "E-mail ou senha incorretos." };
   }
+  await limparBucket("login", parsed.data.email);
   const { getProfile } = await import("@/lib/repo/profile");
   const profile = await getProfile(user.id);
   await setSessionCookie({ sub: user.id, username: profile?.username ?? "" });
@@ -85,6 +125,19 @@ const resetRequestSchema = z.object({ email: z.string().email("E-mail inválido.
 export async function requestResetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = resetRequestSchema.safeParse({ email: String(formData.get("email") ?? "").trim().toLowerCase() });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+
+  // Anti-abuso: 3 pedidos por e-mail e 10 por IP em 1 hora (protege o envio de e-mail).
+  const ip = identificadorIp(await ipDoRequisicao());
+  const [limiteEmail, limiteIp] = await Promise.all([
+    checarLimite("recuperacao", parsed.data.email, LIMITE.recuperacaoPorEmail),
+    checarLimite("recuperacao", ip, LIMITE.recuperacaoPorIp),
+  ]);
+  if (limiteEmail.bloqueado || limiteIp.bloqueado) {
+    return { ok: false, error: mensagemLimite("recuperacao") };
+  }
+  await registrarTentativa("recuperacao", parsed.data.email);
+  await registrarTentativa("recuperacao", ip);
+
   const user = await findUserByEmail(parsed.data.email);
   // Resposta idêntica exista ou não a conta: não revela se o e-mail está cadastrado.
   const resposta = {

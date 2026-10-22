@@ -40,12 +40,17 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Testes de render de UI (Testing Library + jsdom) nos componentes cliente das trilhas.
 - E-mail real de recuperação de senha via Resend (`RESEND_API_KEY`), com link direto para a troca
   de senha (`/recuperar?token=...`) e queda para o modo manual quando a chave não existe.
+- Rate limiting anti-abuso nas rotas de auth (login, cadastro, recuperação): contadores por conta
+  e por IP com janelas fixas (`src/lib/rate-limit.ts`, tabela `auth_rate_limits`), mensagens
+  genéricas que não revelam existência de conta e degradação segura quando a migração `0005` ainda
+  não foi aplicada.
 
 ## Longo prazo (plataforma)
 
 - **PostgreSQL/Supabase:** concluído — migrations `0001`–`0004` aplicadas, camada `src/lib/repo/*`
   reescrita com `pg`, autenticação própria e seed portable (`db/postgres/seed_catalogo.sql`).
-- **Rate limiting:** proteção anti-abuso nas rotas de auth (login, cadastro, recuperação).
+  A migration `0005_auth_rate_limits.sql` está pronta e precisa ser aplicada no Supabase
+  (SQL Editor) para ativar os limites; sem ela o app segue funcionando sem limites.
 - **Lembretes por push/e-mail:** hoje apenas notificações internas (sino do app).
 - **Internacionalização:** pt-BR hoje; separar strings para pt-BR/es/en.
 

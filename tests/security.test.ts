@@ -251,6 +251,49 @@ describe("8. bloqueio remove amizade e impede novas solicitações", () => {
   });
 });
 
+describe("9. rate limiting das rotas de auth", () => {
+  it("bloqueia ao atingir o limite e libera após limpar o bucket", async () => {
+    const rl = await import("@/lib/rate-limit");
+    const email = "bruto@teste.local";
+    for (let i = 0; i < 3; i++) await rl.registrarTentativa("login", email);
+
+    const bloqueado = await rl.checarLimite("login", email, 3);
+    expect(bloqueado.bloqueado).toBe(true);
+    expect(bloqueado.restantes).toBe(0);
+
+    await rl.limparBucket("login", email);
+    const liberado = await rl.checarLimite("login", email, 3);
+    expect(liberado.bloqueado).toBe(false);
+    expect(liberado.restantes).toBe(3);
+  });
+
+  it("contas diferentes não compartilham o contador", async () => {
+    const rl = await import("@/lib/rate-limit");
+    for (let i = 0; i < 2; i++) await rl.registrarTentativa("login", "aluno-a@teste.local");
+    const outro = await rl.checarLimite("login", "aluno-b@teste.local", 2);
+    expect(outro.bloqueado).toBe(false);
+  });
+
+  it("janela vencida reinicia a contagem", async () => {
+    const rl = await import("@/lib/rate-limit");
+    const { execute } = await import("@/lib/db");
+    const email = "velho@teste.local";
+    await rl.registrarTentativa("login", email, 900);
+    // Envelhece a janela (mais de 15 min atrás).
+    await execute(
+      "update auth_rate_limits set window_started_at = $2 where bucket = $1",
+      [rl.chaveBucket("login", email), new Date(Date.now() - 60 * 60 * 1000).toISOString()],
+    );
+
+    const estado = await rl.checarLimite("login", email, 1);
+    expect(estado.bloqueado).toBe(false);
+
+    await rl.registrarTentativa("login", email, 900);
+    const depois = await rl.checarLimite("login", email, 1);
+    expect(depois.bloqueado).toBe(true);
+  });
+});
+
 describe("cópia preserva origem e não concede edição do original", () => {
   it("cópia fica na biblioteca do destinatário com atribuição", async () => {
     const idA = await materials.createMaterial(userA, {

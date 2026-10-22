@@ -153,11 +153,18 @@ estar fechada e o comando acima falha com `connect ETIMEDOUT ...:5432`. Nesse ca
    - `db/postgres/0002_catalogo.sql`
    - `db/postgres/0003_catalog_progress.sql`
    - `db/postgres/0004_catalog_answers.sql`
+   - `db/postgres/0005_auth_rate_limits.sql`
    - `db/postgres/seed_catalogo.sql` (o gerado no item 1)
 
    Cada um deve retornar **Success. No rows returned** (ou uma linha de contagem no seed).
 
 4. Confira em **Table Editor** que as tabelas existem e que `catalog_collections` tem 6 linhas.
+
+> A migração `0005_auth_rate_limits.sql` cria a tabela usada pelo **rate limiting** (proteção contra
+> força bruta em login/cadastro/recuperação de senha). Se ela não for aplicada, o app continua
+> funcionando — apenas sem os limites (o código detecta a tabela ausente e libera as operações).
+> Para conferir se está aplicada, veja `GET /api/health`: o campo `rateLimits` deve mostrar
+> `auth_rate_limits`.
 
 > Observação: o app em execução (Render/Vercel) também fala com o banco por TCP 5432. Se a porta
 > estiver bloqueada **apenas na sua máquina** (firewall local), o deploy na nuvem funcionará normal.
