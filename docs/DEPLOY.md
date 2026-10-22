@@ -291,6 +291,8 @@ O app usa apenas Postgres (sem arquivos em disco), então funciona na Vercel.
    - `RESEND_API_KEY` = chave do Resend (e-mail de recuperação de senha) — opcional.
    - `EMAIL_FROM` = remetente, ex.: `Moriarty <onboarding@resend.dev>` — opcional.
    - `APP_URL` = URL pública do app, ex.: `https://moriarty-alpha.vercel.app` — opcional.
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` = upload de arquivos
+     (veja a seção abaixo) — sem elas o upload fica desativado com aviso na interface.
 6. Clique em **Deploy**. Ao final, a Vercel mostra a URL pública do app.
 
 ### E-mail (Recuperação de senha) — Resend
@@ -309,9 +311,30 @@ do servidor** (modo manual). Com a chave, o usuário recebe o link por e-mail.
 4. Teste em `/recuperar`: informe um e-mail cadastrado e confira a caixa de entrada. O link leva
    direto ao formulário de nova senha (`/recuperar?token=...`), válido por 30 minutos e de uso único.
 
-> Se for usar **upload de arquivos** (tipo “arquivo” na Biblioteca), na Vercel o disco é efêmero —
-> o arquivo não persistirá. Para uploads persistentes, use o Supabase Storage (etapa futura) ou a
-> Opção A (Render com disco, plano pago). Notas, links, questões e flashcards funcionam 100%.
+### Upload de arquivos — Supabase Storage
+
+Na Vercel o disco do servidor é **efêmero e somente leitura**: arquivos enviados pelo usuário
+sumiriam (ou o upload falharia) a cada novo deploy. Por isso o Moriarty usa o **Supabase Storage**
+(bucket privado) quando as variáveis abaixo existem; sem elas, o app avisa na tela da Biblioteca
+que o armazenamento é temporário e mantém notas, links, questões e flashcards funcionando.
+
+1. No painel do Supabase, vá em **Storage → New bucket**:
+   - Nome: `moriarty` (ou o que preferir — anote o nome).
+   - **Public bucket**: **desmarcado** (o bucket é privado).
+2. Em **Project Settings → API**, copie:
+   - **Project URL** → `SUPABASE_URL` (ex.: `https://abcdefgh.supabase.co`);
+   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (é segredo: use apenas no servidor).
+3. Na Vercel, adicione as três variáveis:
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` (nome do bucket).
+4. Faça **Redeploy**. Na Biblioteca, o aviso "armazenamento temporário" deve sumir.
+5. Limite de tamanho: **4 MB** por arquivo (teto do corpo da requisição na Vercel).
+   Formatos aceitos: PDF, PNG, JPG, WEBP, TXT e MD.
+
+> A `service_role` key **nunca** deve ser exposta ao navegador nem versionada. O código do
+> Moriarty só a usa no servidor (`src/lib/storage.ts`).
+
+> A Opção A (Render com disco, plano pago) também funciona. Notas, links, questões e flashcards
+> nunca dependem de storage externo.
 
 ---
 

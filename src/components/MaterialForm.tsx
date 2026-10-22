@@ -5,7 +5,13 @@ import { saveMaterialAction, type ActionState } from "@/actions/materials";
 import { Button } from "@/components/Button";
 import { Field, Input, Select, Textarea } from "@/components/FormControls";
 
-export function MaterialForm({ subjects }: { subjects: { id: string; name: string }[] }) {
+export function MaterialForm({
+  subjects,
+  armazenamentoTemporario = false,
+}: {
+  subjects: { id: string; name: string }[];
+  armazenamentoTemporario?: boolean;
+}) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveMaterialAction, { ok: true });
   const [type, setType] = useState("nota");
 
@@ -38,14 +44,27 @@ export function MaterialForm({ subjects }: { subjects: { id: string; name: strin
         </Field>
       ) : null}
       {type === "arquivo" ? (
-        <Field id="file" label="Arquivo" hint="Até 10 MB. Formatos: PDF, PNG, JPG, WEBP, TXT, MD.">
-          <Input
+        <>
+          {armazenamentoTemporario ? (
+            <p role="alert" className="mb-2 text-sm text-alerta-claro">
+              Atenção: o armazenamento de arquivos não está configurado neste ambiente. Os arquivos
+              enviados ficam apenas no servidor temporário e podem ser perdidos. Use notas, links ou
+              flashcards por enquanto.
+            </p>
+          ) : null}
+          <Field
             id="file"
-            name="file"
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,application/pdf,image/*,text/*"
-          />
-        </Field>
+            label="Arquivo"
+            hint="Até 4 MB (limite da hospedagem). Formatos: PDF, PNG, JPG, WEBP, TXT, MD."
+          >
+            <Input
+              id="file"
+              name="file"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,application/pdf,image/*,text/*"
+            />
+          </Field>
+        </>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field id="subjectId" label="Matéria">

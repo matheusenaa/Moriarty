@@ -33,8 +33,9 @@ sem expor nenhum dado de progresso.
 - **Revisão espaçada (SM-2 simplificado):** fila por vencimento, avaliação fácil/bom/difícil/não
   lembrei, intervalos crescentes e histórico.
 - **Matérias e tópicos** com prioridade, domínio autodeclarado e arquivamento.
-- **Biblioteca de materiais:** notas, links, arquivos (PDF/PNG/JPG/WEBP/TXT/MD, até 10 MB),
-  etiquetas, favoritos, arquivamento e duplicação.
+- **Biblioteca de materiais:** notas, links, arquivos (PDF/PNG/JPG/WEBP/TXT/MD, até 4 MB),
+  etiquetas, favoritos, arquivamento e duplicação. Os arquivos ficam em bucket privado do
+  Supabase Storage (com fallback temporário em disco).
 - **Compartilhamento consciente:** privado (padrão), amigos (amizade aceita), link (usuário
   autenticado com o token) ou público (escolha explícita). Copiar preserva atribuição ao autor
   original e não dá acesso de edição ao original.
@@ -177,8 +178,11 @@ Detalhes completos em [`docs/SEGURANCA.md`](docs/SEGURANCA.md). Resumo:
 - Senhas nunca são armazenadas em claro; recuperação usa token aleatório com hash SHA-256,
   validade de 30 minutos e uso único.
 - Cookie de sessão `HttpOnly`/`SameSite=Lax`/`Secure` em produção, assinado com `AUTH_SECRET`.
-- Uploads: allowlist de MIME e extensão, limite de 10 MB, nome aleatório, servidos apenas ao dono
-  autenticado via `/api/arquivos/[id]`; nunca há URL pública permanente.
+- Uploads: allowlist de MIME e extensão, limite de 4 MB, nome aleatório, bucket privado
+  (Supabase Storage) e servidos apenas ao dono autenticado via `/api/arquivos/[id]`; nunca há URL
+  pública permanente.
+- Rate limiting nas rotas de auth (por conta e por IP), com janelas fixas e degradação segura se a
+  migração `0005` ainda não foi aplicada.
 - Compartilhamento exige login por padrão; público só por escolha explícita.
 - Respostas de cadastro e recuperação não revelam existência de conta.
 - Consultas SQL usam prepared statements (sem concatenação de entrada).

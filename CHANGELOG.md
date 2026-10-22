@@ -2,6 +2,42 @@
 
 Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [Não publicado]
+
+### Adicionado
+
+- **E-mail real de recuperação de senha (Resend)** (`src/lib/email.ts`): link direto para a troca de
+  senha (`/recuperar?token=…`, 30 min, uso único), resposta genérica que não revela se a conta
+  existe e queda para o modo manual (token no log) quando `RESEND_API_KEY` não está configurado.
+- **Rate limiting anti-abuso nas rotas de auth** (migração `0005_auth_rate_limits.sql`,
+  `src/lib/rate-limit.ts`): login (10 falhas por conta / 30 por IP em 15 min), cadastro (5/IP em 1 h)
+  e recuperação de senha (3 por e-mail / 10 por IP em 1 h). Contadores por bucket em tabela
+  própria, mensagens genéricas e degradação segura (o app não quebra) se a migração ainda não foi
+  aplicada.
+- **Upload de arquivos persistente (Supabase Storage)** (`src/lib/storage.ts`): bucket privado via
+  REST, com fallback em disco local e aviso na Biblioteca quando o armazenamento é temporário
+  (o disco da Vercel é efêmero). Caminhos validados contra travessia de diretório; o arquivo só é
+  removido se nenhuma outra referência apontar para ele.
+- **Conteúdo das 3 trilhas novas** (PCDF Agente, PMDF Soldado e Polícia Penal): 9 flashcards
+  autorais adicionais; catálogo com **6 coleções e 165 itens**.
+- **Testes de conteúdo** (`tests/conteudo.test.ts`, 15 testes, sem banco): metadados das trilhas,
+  links oficiais, formato dos flashcards, gabaritos, regra de direitos autorais e revisão em
+  180 dias.
+- **Testes de render de UI** (`tests/ui-catalog.test.tsx`, Testing Library + jsdom) e **guarda
+  cliente/servidor** (`tests/fronteira-cliente-servidor.test.ts`).
+
+### Corrigido
+
+- **Erro 500 nas páginas autenticadas:** funções exportadas por módulos `"use client"` estavam sendo
+  chamadas em server components. `splitFlashcard` foi movida para `src/lib/flashcard.ts` e a guarda
+  de fronteira cobre o caso.
+
+### Alterado
+
+- Limite de upload reduzido de 10 MB para **4 MB** (teto do corpo da requisição na Vercel) e
+  `experimental.serverActions.bodySizeLimit` configurado.
+- `GET /api/health` passou a informar também a presença da tabela `auth_rate_limits`.
+
 ## [0.2.0] — 2026-10-20
 
 Reposicionamento da identidade para plataforma de estudos/concurso e conteúdo inicial de PMDF, PF e PRF. Nenhuma migração destrutiva: as mudanças são aditivas e preservam os dados existentes.

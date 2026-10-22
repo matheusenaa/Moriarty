@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { listMaterials } from "@/lib/repo/materials";
 import { listSubjects } from "@/lib/repo/planning";
+import { modoArmazenamento } from "@/lib/storage";
 import { Card, CardTitle } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState } from "@/components/Feedback";
@@ -52,7 +53,10 @@ export default async function BibliotecaPage({
 
       <Card>
         <CardTitle>Novo material</CardTitle>
-        <MaterialForm subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
+        <MaterialForm
+          subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+          armazenamentoTemporario={modoArmazenamento() === "disco"}
+        />
       </Card>
 
       <Card>

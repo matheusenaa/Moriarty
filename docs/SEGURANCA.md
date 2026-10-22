@@ -75,9 +75,16 @@ npx vitest run tests/security.test.ts     # contagem real, bloqueio e janela ven
 ### Uploads
 
 - Allowlist de MIME/extensão: PDF, PNG, JPG, WEBP, TXT, MD.
-- Limite de 10 MB.
+- Limite de 4 MB (teto do corpo da requisição na hospedagem).
 - Nome de arquivo aleatório (16 bytes) dentro de `uploads/<userId>/`.
+- Armazenamento em bucket **privado** do Supabase Storage (`SUPABASE_SERVICE_ROLE_KEY`, usada só
+  no servidor); sem essas variáveis, o arquivo vai para o disco local (efêmero na Vercel) e a
+  interface avisa que o armazenamento é temporário.
+- O caminho guardado no banco é relativo (`<userId>/<nome>`) e validado contra travessia de
+  diretório (`caminhoSeguro`) antes de qualquer leitura ou remoção.
 - Servidos somente ao dono autenticado em `GET /api/arquivos/[id]`; sem URL pública permanente.
+- Ao excluir um material, o arquivo físico só é removido se nenhuma outra referência apontar para
+  ele (cópias reutilizam o mesmo caminho).
 
 ### Compartilhamento
 
@@ -117,7 +124,8 @@ npx vitest run tests/security.test.ts     # contagem real, bloqueio e janela ven
    senha prova o e-mail, mas o cadastro não.
 3. **Exclusão lógica.** `softDeleteUser` não apaga fisicamente o histórico. Se sua política exigir
    apagamento definitivo, implemente a remoção em cascata (as FKs já usam `ON DELETE CASCADE`).
-4. **Uploads no filesystem.** Sem varredura antivírus; confie apenas em conteúdo próprio.
+4. **Uploads sem varredura antivírus.** Confie apenas em conteúdo próprio; o bucket é privado e o
+   download exige autenticação, mas o arquivo não é analisado.
 5. **Backups manuais.** Não há rotina automatizada no repositório.
 6. **Sem CSP/headers de segurança explícitos.** Considere adicionar `Content-Security-Policy` e
    `X-Frame-Options` no `next.config.ts` ou no proxy.

@@ -44,6 +44,11 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   e por IP com janelas fixas (`src/lib/rate-limit.ts`, tabela `auth_rate_limits`), mensagens
   genéricas que não revelam existência de conta e degradação segura quando a migração `0005` ainda
   não foi aplicada.
+- Upload de arquivos persistente via Supabase Storage (`src/lib/storage.ts`): o disco da Vercel é
+  efêmero, então os arquivos agora vão para um bucket privado; sem as variáveis
+  `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_STORAGE_BUCKET` a interface avisa que o
+  armazenamento é temporário. **Falta** criar o bucket no Supabase e cadastrar as variáveis na
+  Vercel (ver `docs/DEPLOY.md`).
 
 ## Longo prazo (plataforma)
 

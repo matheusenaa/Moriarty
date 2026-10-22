@@ -2,11 +2,11 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomBytes } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { todayStr } from "@/lib/dates";
+import { removerArquivo, salvarArquivo } from "@/lib/storage";
 import {
   copyMaterial,
   createMaterial,
@@ -33,7 +33,8 @@ const ALLOWED_MIME = new Map<string, string>([
   ["text/plain", ".txt"],
   ["text/markdown", ".md"],
 ]);
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+// 4 MB: teto do corpo de requisição na Vercel (4,5 MB). Acima disso a hospedagem recusa.
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 const materialSchema = z.object({
   title: z.string().min(2, "Informe o título.").max(160),
@@ -71,15 +72,22 @@ export async function saveMaterialAction(_prev: ActionState, formData: FormData)
       return { ok: false, error: "Tipo de arquivo não permitido. Use PDF, PNG, JPG, WEBP, TXT ou MD." };
     }
     if (file.size > MAX_FILE_BYTES) {
-      return { ok: false, error: "Arquivo excede o limite de 10 MB." };
+      return { ok: false, error: "Arquivo excede o limite de 4 MB (limite da hospedagem)." };
     }
     const ext = ALLOWED_MIME.get(mime)!;
-    const dir = path.join(process.cwd(), "uploads", user.id);
-    await mkdir(dir, { recursive: true });
     const name = `${randomBytes(16).toString("hex")}${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(dir, name), buffer);
-    filePath = path.join(user.id, name);
+    const destino = path.posix.join(user.id, name);
+    const salvo = await salvarArquivo(destino, buffer, mime);
+    if (!salvo.ok) {
+      console.error("[materiais] falha ao salvar arquivo:", salvo.erro);
+      return {
+        ok: false,
+        error:
+          "Não foi possível salvar o arquivo agora. Tente novamente ou use um arquivo menor.",
+      };
+    }
+    filePath = destino;
     fileSize = file.size;
     mimeType = mime;
   }
@@ -153,7 +161,19 @@ export async function archiveMaterialAction(formData: FormData): Promise<void> {
 
 export async function deleteMaterialAction(formData: FormData): Promise<void> {
   const user = await requireUser();
-  await deleteMaterial(user.id, String(formData.get("id") ?? ""));
+  const id = String(formData.get("id") ?? "");
+  const material = await getMaterial(user.id, id);
+  await deleteMaterial(user.id, id);
+  // Remove o arquivo físico apenas se nenhuma outra referência apontar para ele
+  // (cópias de material compartilhado reutilizam o mesmo caminho).
+  if (material?.file_path) {
+    const { queryOne } = await import("@/lib/db");
+    const outras = await queryOne<{ total: number }>(
+      "select count(*)::int as total from materials where file_path = $1 and id <> $2",
+      [material.file_path, id],
+    );
+    if ((outras?.total ?? 0) === 0) await removerArquivo(material.file_path);
+  }
   revalidatePath("/biblioteca");
 }
 
