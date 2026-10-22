@@ -19,6 +19,7 @@ const MIGRATIONS = [
   { name: "004_catalog_answers", file: path.join("db", "postgres", "0004_catalog_answers.sql") },
   { name: "005_auth_rate_limits", file: path.join("db", "postgres", "0005_auth_rate_limits.sql") },
   { name: "006_catalog_quiz_attempts", file: path.join("db", "postgres", "0006_catalog_quiz_attempts.sql") },
+  { name: "007_content_contributions", file: path.join("db", "postgres", "0007_content_contributions.sql") },
 ];
 
 function loadEnv() {

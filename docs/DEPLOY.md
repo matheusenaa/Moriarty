@@ -155,6 +155,7 @@ estar fechada e o comando acima falha com `connect ETIMEDOUT ...:5432`. Nesse ca
    - `db/postgres/0004_catalog_answers.sql`
    - `db/postgres/0005_auth_rate_limits.sql`
    - `db/postgres/0006_catalog_quiz_attempts.sql`
+   - `db/postgres/0007_content_contributions.sql`
    - `db/postgres/seed_catalogo.sql` (o gerado no item 1)
 
    Cada um deve retornar **Success. No rows returned** (ou uma linha de contagem no seed).

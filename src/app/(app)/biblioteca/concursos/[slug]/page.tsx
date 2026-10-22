@@ -94,6 +94,12 @@ export default async function ColecaoPage({ params }: { params: Promise<{ slug: 
           >
             Fazer simulado da trilha
           </Link>
+          <Link
+            href={`/contribuir?trilha=${c.slug}`}
+            className="rounded-md border border-white/10 px-4 py-2 text-cinza hover:bg-white/5"
+          >
+            Sugerir conteúdo para esta trilha
+          </Link>
           <a
             href={`/biblioteca/concursos/${c.slug}/roteiro?formato=md`}
             className="text-cinza underline hover:text-pergaminho"

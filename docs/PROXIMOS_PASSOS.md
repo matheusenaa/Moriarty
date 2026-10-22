@@ -58,6 +58,10 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   correção no servidor (o gabarito nunca vai ao navegador), resultado com percentual, tempo usado
   e explicação de cada questão. As respostas também entram no Desempenho (`catalog_answers`).
   Tabela `catalog_quiz_attempts` (migração `0006`).
+- Contribuição de conteúdo com moderação: usuários autenticados sugerem notas, questões e flashcards
+  para as trilhas; administradores aprovam/rejeitam em `/admin/contribuicoes`; itens aprovados entram
+  no catálogo com autoria do aluno e aviso "NÃO é questão oficial". Tabela `content_contributions`
+  (migração `0007`).
 
 ## Longo prazo (plataforma)
 

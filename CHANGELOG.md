@@ -36,6 +36,9 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
   autorais, tempo limite, correção no servidor, resultado com percentual/tempo/explicação. As
   respostas alimentam o Desempenho. Novo `GET /api/health` agora também informa o modo de
   armazenamento de arquivos (`supabase`/`disco`) e se o bucket existe.
+- **Contribuição de conteúdo com moderação** (`/contribuir`, `/admin/contribuicoes`): alunos sugerem
+  notas/questões/flashcards para as trilhas; admins aprovam/rejeitam; itens aprovados entram no
+  catálogo com atribuição de autoria. Nova tabela `content_contributions` (migração `0007`).
 
 ### Corrigido
 

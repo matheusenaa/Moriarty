@@ -40,6 +40,7 @@ const NAV = [
   { href: "/simulados", label: "Simulados", icon: Search },
   { href: "/desempenho", label: "Desempenho", icon: Share2 },
   { href: "/arquivo", label: "Arquivo", icon: FolderOpen },
+  { href: "/contribuir", label: "Contribuir", icon: Sparkles },
   { href: "/amigos", label: "Amigos", icon: Users },
   { href: "/perfil", label: "Perfil", icon: Settings },
 ];
