@@ -2,18 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { ehAdmin } from "@/lib/admin";
-import { listPendingContributions, reviewContribution } from "@/lib/repo/contributions";
+import { listPendingContributions } from "@/lib/repo/contributions";
 import { getCollectionBySlug } from "@/lib/repo/catalog";
 import { Card, CardTitle, CardDescription } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { Textarea } from "@/components/FormControls";
 import { reviewContributionAction } from "@/actions/contributions";
-
-const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente",
-  aprovado: "Aprovado",
-  rejeitado: "Rejeitado",
-};
 
 const STATUS_TONE: Record<string, "petroleo" | "latiao" | "alerta" | "neutro"> = {
   pendente: "latiao",

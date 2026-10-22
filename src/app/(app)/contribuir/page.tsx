@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getMyContributionsAction } from "@/actions/contributions";
@@ -38,7 +37,7 @@ export default async function ContribuirPage({ searchParams }: { searchParams: P
         <CardTitle>Nova sugestão</CardTitle>
         <CardDescription>
           Escolha a trilha, o tipo de conteúdo e preencha os campos. Questões precisam de
-          alternativas, gabarito e explicação. Flashcards usam o formato "Frente: ... Verso: ...".
+          alternativas, gabarito e explicação. Flashcards usam o formato &ldquo;Frente: ... Verso: ...&rdquo;.
         </CardDescription>
         <ContributionForm defaultCollectionSlug={trilha} />
       </Card>
@@ -55,7 +54,7 @@ export default async function ContribuirPage({ searchParams }: { searchParams: P
                 <div className="flex flex-col gap-0.5">
                   <p className="font-medium text-pergaminho">{c.title}</p>
                   <p className="text-xs text-cinza">
-                    {c.collection_slug} · {c.kind} · {new Date(c.created_at).toLocaleDateString("pt-BR")}
+                    {c.collection_slug} &middot; {c.kind} &middot; {new Date(c.created_at).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

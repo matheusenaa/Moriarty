@@ -7,7 +7,6 @@ import { ehAdmin } from "@/lib/admin";
 import {
   normalizarContribuicao,
   validarContribuicao,
-  tipoContribuicao,
 } from "@/lib/contributions";
 import {
   createContribution,

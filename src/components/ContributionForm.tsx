@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
+import { useState, useActionState } from "react";
 import { createContributionAction } from "@/actions/contributions";
 import { TIPOS_CONTRIBUICAO } from "@/lib/contributions";
-import { Input, Textarea, Select, Field, Label } from "@/components/FormControls";
+import { Input, Textarea, Select, Field } from "@/components/FormControls";
 import { cn } from "@/lib/cn";
 
 const TRILHAS = [
@@ -14,12 +14,6 @@ const TRILHAS = [
   { slug: "pcdf-agente", label: "PCDF – Agente" },
   { slug: "policia-penal", label: "Polícia Penal" },
 ];
-
-const KIND_LABEL: Record<string, string> = {
-  nota: "Nota de estudo",
-  questao: "Questão de treino",
-  flashcard: "Flashcard",
-};
 
 const KIND_HINT: Record<string, string> = {
   nota: "Resumo, esquema, mnemônico ou anotação sobre um tema da trilha.",
@@ -38,24 +32,18 @@ export function ContributionForm({ defaultCollectionSlug }: Props) {
     ok: true,
   });
 
-  // Pre-seleciona a trilha se veio na query string
-  useEffect(() => {
-    if (defaultCollectionSlug) {
-      const found = TRILHAS.find((t) => t.slug === defaultCollectionSlug);
-      // O Select usa defaultValue, mas controlamos via state do form? Simpler: o hidden input já vai com o valor certo no submit
-      // Apenas definimos o defaultValue do Select passando como prop (não dá com defaultValue dinâmico sem key).
-      // Vou usar key no Select para forçar re-render quando defaultCollectionSlug muda.
-    }
-  }, [defaultCollectionSlug]);
-
   const isQuestao = kind === "questao";
   const isFlashcard = kind === "flashcard";
 
-  // Ajusta options quando kind muda
-  useEffect(() => {
-    if (isQuestao && options.length < 2) setOptions(["", ""]);
-    if (!isQuestao) setOptions(["", ""]);
-  }, [isQuestao]);
+  function handleKindChange(newKind: "nota" | "questao" | "flashcard") {
+    setKind(newKind);
+    if (newKind === "questao") {
+      setOptions((prev) => (prev.length < 2 ? ["", ""] : prev));
+    } else {
+      setOptions(["", ""]);
+    }
+    setCorrectIndex(null);
+  }
 
   function handleOptionChange(index: number, value: string) {
     const next = [...options];
@@ -144,7 +132,7 @@ export function ContributionForm({ defaultCollectionSlug }: Props) {
               name="kind"
               value={t.valor}
               checked={kind === t.valor}
-              onChange={() => setKind(t.valor)}
+              onChange={() => handleKindChange(t.valor)}
               className="sr-only"
             />
             <strong className="block">{t.label}</strong>
