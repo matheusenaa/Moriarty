@@ -65,7 +65,8 @@ Cada coleção contém:
 - **Flashcards** (kind `flashcard`) — frente/verso para revisão espaçada.
 - **Questões de treino** (kind `questao`) — autorais, com 5 alternativas, gabarito e explicação.
 
-Total: **3 coleções / 80 itens**.
+Total: **6 coleções / 165 itens** (PMDF CFO, PF Policial 2025, PRF, PCDF Agente/Investigador,
+PMDF Soldado e Polícia Penal).
 
 ## Estrutura de dados
 
@@ -80,6 +81,10 @@ Total: **3 coleções / 80 itens**.
 (`lido|dominado`), `UNIQUE(user_id, item_id)`. Guarda apenas o **progresso do usuário**; exclusões
 no conteúdo limpam o progresso automaticamente.
 
+`catalog_answers`: `user_id`, `item_id` (FK → `catalog_items`), `chosen_index`, `is_correct`
+(SMALLINT 0/1), `attempts`, `UNIQUE(user_id, item_id)`. Registra as respostas de treino das trilhas
+(acerto/erro), alimenta o Desempenho e a ordenação "não respondidas / erradas primeiro".
+
 As tabelas de conteúdo (`catalog_collections`, `catalog_items`) não possuem `user_id` nem colunas de
 progresso (verificado por teste) — o progresso vive em `catalog_progress`.
 
@@ -87,9 +92,19 @@ progresso (verificado por teste) — o progresso vive em `catalog_progress`.
 
 1. Edite `scripts/seed-catalog.mjs` (títulos dos itens existentes são a chave — mudar o título cria
    um novo item; para alterar o corpo de um item, mantenha o título e edite `body`/`explanation`).
+   As trilhas novas ficam em `scripts/conteudo-trilhas.mjs` e o conteúdo expandido em
+   `scripts/conteudo-extra.mjs`.
 2. Atualize `CHECKED_AT` e o `status`/`statusNote` quando reverificar as fontes.
 3. Rode `npm run db:migrate` (ou apenas confie no seed automático ao subir o app).
-4. Rode `npm test` — `tests/catalog.test.ts` valida as invariantes.
+4. Rode `npm test` — `tests/catalog.test.ts` valida as invariantes no banco e
+   `tests/conteudo.test.ts` (roda **sem banco**) valida o conteúdo: metadados das 6 trilhas,
+   `edital_ref`/`checked_at` sempre preenchidos, links apenas em domínios oficiais, flashcards no
+   formato Frente/Verso, questões autorais com gabarito e aviso de "não é questão oficial",
+   ausência de prova vazada e **frescor da revisão** (o teste falha se `CHECKED_AT` passar de
+   180 dias — é a rotina de revisão periódica).
+5. Em produção, **roda o seed** para gravar o conteúdo novo: botão em `/admin` (ou em `/perfil`),
+   ou `POST /api/admin/seed` com o header `x-seed-token`. O seed é idempotente: itens novos são
+   inseridos e os existentes não são duplicados.
 
 > Migrações são aplicadas **uma vez por nome** (`schema_migrations`). Alterar `db/schema.sql`
 > retroativamente **não** afeta bancos já migrados; para conteúdo novo use uma migração aditiva.

@@ -32,8 +32,8 @@ npm install
 
 Aguarde terminar (pode levar alguns minutos na primeira vez).
 
-> **Se der erro de compilação do `better-sqlite3`:** instale as "Build Tools do Visual Studio"
-> (opção "Desktop development with C++") e rode `npm install` de novo. Alternativa fácil: use WSL.
+> **Se a instalação reclamar de algum módulo nativo:** verifique se o Node.js é a versão LTS
+> recomendada e rode `npm install` de novo. Alternativa fácil: use WSL.
 
 ## 4. Criar o arquivo de configuração
 
@@ -50,13 +50,17 @@ Aguarde terminar (pode levar alguns minutos na primeira vez).
    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
    ```
 
-3. Abra `.env.local` no Bloco de Notas e cole o segredo em `AUTH_SECRET=`, por exemplo:
+3. Preencha também a variável `DATABASE_URL` com a conexão do seu PostgreSQL (Supabase é o
+   caminho usado em produção — veja `docs/DEPLOY.md`). Sem ela o app não sobe.
+
+4. Abra `.env.local` no Bloco de Notas e cole o segredo em `AUTH_SECRET=`, por exemplo:
 
    ```
    AUTH_SECRET=cole-aqui-o-segredo-gerado
+   DATABASE_URL=postgresql://usuario:senha@host:5432/postgres
    ```
 
-4. Salve e feche.
+5. Salve e feche.
 
 ## 5. Criar o banco e carregar o conteúdo de concursos
 
@@ -64,8 +68,12 @@ Aguarde terminar (pode levar alguns minutos na primeira vez).
 npm run db:migrate
 ```
 
-Você verá mensagens como "Migração aplicada: 002_catalogo" e
-"Seed de conteúdo: 3 coleções, 80 itens". O banco fica em `data\moriarty.db`.
+O comando aplica as migrações (`0001` a `0004`) no PostgreSQL apontado por `DATABASE_URL` e roda o
+seed do conteúdo (6 trilhas de concursos, ~165 itens). O banco **não** é um arquivo na pasta do
+projeto: ele fica no PostgreSQL.
+
+> **Produção (Vercel):** não rode comandos no servidor. O botão **"Rodar seed"** em `/admin`
+> (ou no card do `/perfil`) aplica o conteúdo pela interface, sem terminal e sem colar SQL.
 
 ## 6. Ligar o sistema
 
@@ -81,7 +89,8 @@ Para desligar, volte ao Prompt e tecle `Ctrl + C`.
 1. Na tela inicial, clique em **Começar a estudar** e faça o **cadastro** (e-mail e senha).
 2. Siga o **onboarding**: escolha o objetivo, as matérias e os horários disponíveis.
 3. Abra a **Central de Estudos** para ver o que fazer hoje.
-4. Abra **Biblioteca → Biblioteca de concursos** para explorar PMDF, PF e PRF:
+4. Abra **Biblioteca → Biblioteca de concursos** para explorar as 6 trilhas (PMDF CFO, PF Policial,
+   PRF, PCDF Agente/Investigador, PMDF Soldado e Polícia Penal):
    - use a **busca** (por concurso, matéria ou tema) e o **filtro de status** para achar a trilha;
    - leia as notas, vire os flashcards, responda às questões de treino;
    - use **"salvar na minha biblioteca"** para levar um resumo para a sua coleção pessoal;
@@ -94,7 +103,8 @@ Para desligar, volte ao Prompt e tecle `Ctrl + C`.
 | Comando | Para quê |
 |---|---|
 | `npm run dev` | Ligar o sistema (desenvolvimento) |
-| `npm run db:migrate` | Criar/atualizar banco e conteúdo (pode rodar sempre) |
+| `npm run db:migrate` | Aplicar migrações e seed no PostgreSQL (pode rodar sempre) |
+| `npm run db:seed:sql` | Gerar `db/postgres/seed_catalogo.sql` (para colar no SQL Editor) |
 | `npm test` | Rodar os testes automáticos |
 | `npm run build` | Gerar a versão de produção |
 | `npm start` | Rodar a versão de produção (após `build`) |
@@ -102,9 +112,12 @@ Para desligar, volte ao Prompt e tecle `Ctrl + C`.
 ## 9. Problemas comuns
 
 - **"AUTH_SECRET" ausente/curto** — confira o passo 4; o segredo precisa de 32+ caracteres.
+- **"DATABASE_URL" ausente ou erro de conexão** — o banco é PostgreSQL; preencha a variável com a
+  conexão do Supabase (em produção, use o *Session Pooler*).
 - **Porta 3000 ocupada** — feche outro programa que a use ou rode `npm run dev -- -p 3001`.
 - **Tela em branco após mudar algo** — pare (`Ctrl + C`) e rode `npm run dev` de novo.
-- **Quero recomeçar do zero** — apague `data\moriarty.db` e rode `npm run db:migrate` novamente.
+- **Quero recomeçar do zero** — limpe as tabelas no PostgreSQL (SQL Editor do Supabase) e rode
+  `npm run db:migrate` de novo; o seed é idempotente e não duplica conteúdo.
 
 ## 10. Sobre o conteúdo das trilhas
 

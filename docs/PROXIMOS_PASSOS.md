@@ -7,8 +7,10 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 
 - **Testes de render na UI:** teste de render das páginas `/biblioteca/concursos` e `/[slug]` com
   Testing Library (hoje a cobertura é de repositório + lógica, não de JSX).
-- **Verificação de conteúdo periódica:** rotina (checklist em `docs/CONTEUDO_INICIAL_CONCURSOS.md`)
-  para revisar `status`/`checked_at` e atualizar `edital_ref` quando sair edital novo.
+- **Verificação de conteúdo periódica:** rotina automatizada em `tests/conteudo.test.ts` (roda sem
+  banco) — valida metadados das 6 trilhas, `edital_ref`/`checked_at`, links oficiais, formato dos
+  flashcards, gabaritos e a regra de direitos autorais. O teste **falha** se `CHECKED_AT` passar de
+  180 dias, obrigando a reverificar as fontes. Ainda falta a conferência manual dos links/ediçais.
 - **Mais trilhas:** adicionar concursos (ex.: PRF novo edital, PF por cargo específico, PM/PC
   estaduais) reaproveitando `constitutionalNote` e o seed idempotente.
 
@@ -28,12 +30,13 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - Agente de busca em fontes oficiais fixas (determinístico, sem IA paga) — 28 leis.
 - Trilhas adicionais: PCDF Agente/Investigador, PMDF Soldado (praças) e Polícia Penal.
 - Seed executável pela interface (botão em `/admin`), sem terminal e sem colar SQL.
+- Testes de integridade do conteúdo (`tests/conteudo.test.ts`, sem banco) e flashcards nas trilhas
+  novas (pcdf-agente, pmdf-soldado, policia-penal).
 
 ## Longo prazo (plataforma)
 
-- **PostgreSQL/Supabase:** aplicar `supabase/migrations/0001-0003` com RLS por usuário; reescrever
-  `src/lib/repo/*` e a autenticação (telas e motores puros permanecem). Migrations e seed portátil
-  já estão prontos; falta a troca da camada de dados.
+- **PostgreSQL/Supabase:** concluído — migrations `0001`–`0004` aplicadas, camada `src/lib/repo/*`
+  reescrita com `pg`, autenticação própria e seed portable (`db/postgres/seed_catalogo.sql`).
 - **Rate limiting e e-mail:** proteção anti-abuso nas rotas de auth; envio real do token de
   recuperação (hoje registrado no log do servidor).
 - **Lembretes por push/e-mail:** hoje apenas notificações internas (sino do app).
