@@ -30,6 +30,19 @@ export function weekdayOf(dateStr: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+/** Minuto do dia (0–1439) no fuso informado. */
+export function minuteOfDayInTz(date: Date, timeZone = appTimeZone()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return h * 60 + m;
+}
+
 export function daysBetween(from: string, to: string): number {
   const [y1, m1, d1] = from.split("-").map(Number);
   const [y2, m2, d2] = to.split("-").map(Number);

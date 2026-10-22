@@ -8,6 +8,8 @@ import { dailyMinutes, questionAccuracyBySubject, totals, studyStreak, sessionsB
 import { gamificationSummary } from "@/lib/repo/gamification";
 import { rankForXp, progressToNextRank } from "@/lib/xp";
 import { dueLabel } from "@/lib/srs";
+import { diasDoLembrete, listReminders } from "@/lib/repo/notifications";
+import { descreverLembrete } from "@/lib/lembretes";
 import { Card, CardTitle, CardDescription } from "@/components/Card";
 import { Badge } from "@/components/Badge";
 import { EmptyState, ProgressBar } from "@/components/Feedback";
@@ -35,6 +37,7 @@ export default async function CentralPage() {
   const subjectMap = new Map(subjects.map((s) => [s.id, s.name]));
   const statusCount = await sessionsByStatus(user.id, weekAgo, today);
   const daysToExam = goal?.exam_date ? daysBetween(today, goal.exam_date) : null;
+  const lembretesAtivos = (await listReminders(user.id)).filter((l) => l.enabled === 1);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -161,6 +164,29 @@ export default async function CentralPage() {
               </p>
             </Card>
           ) : null}
+
+          <Card>
+            <CardTitle className="text-base">Seus lembretes</CardTitle>
+            {lembretesAtivos.length === 0 ? (
+              <CardDescription className="mt-2">
+                Nenhum lembrete ativo.{" "}
+                <Link href="/perfil" className="underline">
+                  Configure no Perfil
+                </Link>{" "}
+                e o aviso aparece no sino da plataforma no horário escolhido.
+              </CardDescription>
+            ) : (
+              <ul className="mt-2 space-y-1 text-sm text-pergaminho">
+                {lembretesAtivos.map((l) => (
+                  <li key={l.id}>{descreverLembrete(l.kind, l.time_minute, diasDoLembrete(l.days_json))}</li>
+                ))}
+                <li className="text-xs text-cinza-escuro">
+                  O aviso aparece no sino da plataforma perto do horário definido (não é notificação de
+                  navegador).
+                </li>
+              </ul>
+            )}
+          </Card>
 
           <Card>
             <CardTitle className="text-base">Ações rápidas</CardTitle>

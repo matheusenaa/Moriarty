@@ -49,6 +49,9 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`SUPABASE_STORAGE_BUCKET` a interface avisa que o
   armazenamento é temporário. **Falta** criar o bucket no Supabase e cadastrar as variáveis na
   Vercel (ver `docs/DEPLOY.md`).
+- Lembretes configurados no Perfil passaram a ter efeito: o aviso "Hora da revisão" / "Hora da
+  sessão de estudo" aparece no sino da plataforma quando o dia e o horário (±30 min) batem, e a
+  Central mostra a agenda configurada. O sino também permite marcar lembrete (ou todos) como lidos.
 
 ## Longo prazo (plataforma)
 

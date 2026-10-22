@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { logoutAction } from "@/actions/auth";
-import { generateDailyReminders, listNotifications } from "@/lib/repo/notifications";
-import { todayStr } from "@/lib/dates";
+import { generateDailyReminders, generateReminderNotifications, listNotifications } from "@/lib/repo/notifications";
+import { minuteOfDayInTz, todayStr, weekdayOf } from "@/lib/dates";
 import { NavClient } from "@/components/NavClient";
 import { NotificationList } from "@/components/NotificationList";
 import { gamificationSummary } from "@/lib/repo/gamification";
@@ -51,6 +51,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const today = todayStr(user.timezone);
   await generateDailyReminders(user.id, today);
+  await generateReminderNotifications(
+    user.id,
+    today,
+    weekdayOf(today),
+    minuteOfDayInTz(new Date(), user.timezone),
+  );
   const notifications = (await listNotifications(user.id)).filter((n) => !n.read_at).slice(0, 8);
   const streak = await studyStreak(user.id, today);
   const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;

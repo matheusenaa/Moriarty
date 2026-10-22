@@ -23,6 +23,11 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
 - **Testes de conteúdo** (`tests/conteudo.test.ts`, 15 testes, sem banco): metadados das trilhas,
   links oficiais, formato dos flashcards, gabaritos, regra de direitos autorais e revisão em
   180 dias.
+- **Lembretes com efeito real:** o aviso "Hora da revisão"/"Hora da sessão de estudo" aparece no
+  sino da plataforma quando o dia e o horário (±30 min) configurados no Perfil batem; a Central
+  passa a mostrar a agenda de lembretes e o sino permite marcar um lembrete (ou todos) como lido.
+- **Headers de segurança** (`next.config.ts`): `Content-Security-Policy`, `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e `Strict-Transport-Security`.
 - **Testes de render de UI** (`tests/ui-catalog.test.tsx`, Testing Library + jsdom) e **guarda
   cliente/servidor** (`tests/fronteira-cliente-servidor.test.ts`).
 

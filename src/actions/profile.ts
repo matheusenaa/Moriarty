@@ -43,7 +43,12 @@ export async function saveReminderAction(_prev: ActionState, formData: FormData)
     .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
   await upsertReminder(user.id, kind, time, days.length > 0 ? days : [0, 1, 2, 3, 4, 5, 6], formData.get("enabled") === "on");
   revalidatePath("/perfil");
-  return { ok: true, message: "Lembrete salvo. Ele aparece na plataforma; não prometemos notificação do navegador." };
+  revalidatePath("/central");
+  return {
+    ok: true,
+    message:
+      "Lembrete salvo. O aviso aparece no sino da plataforma perto do horário escolhido (não é notificação de navegador).",
+  };
 }
 
 export async function getReminders(userId: string) {

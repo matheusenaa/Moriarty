@@ -112,3 +112,46 @@ export async function generateDailyReminders(userId: string, today: string): Pro
     await pushNotification(userId, "sessoes_hoje", "Sessões de hoje", `Você tem ${sessions} sessão(ões) planejada(s) para hoje.`, today);
   }
 }
+
+/** Dias da semana de um lembrete (0 = domingo ... 6 = sábado). */
+export function diasDoLembrete(daysJson: string): number[] {
+  try {
+    const parsed = JSON.parse(daysJson);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((d) => Number(d))
+      .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Aviso do lembrete configurado pelo usuário (Perfil).
+ * Dispara quando o dia da semana bate e o horário configurado está a ±30 min do horário atual.
+ * A deduplicação por dia impede avisos repetidos.
+ */
+export async function generateReminderNotifications(
+  userId: string,
+  today: string,
+  weekday: number,
+  minuteOfDay: number,
+): Promise<void> {
+  const lembretes = await listReminders(userId);
+  for (const lembrete of lembretes) {
+    if (lembrete.enabled !== 1) continue;
+    const dias = diasDoLembrete(lembrete.days_json);
+    if (!dias.includes(weekday)) continue;
+    if (Math.abs(minuteOfDay - lembrete.time_minute) > 30) continue;
+    const revisao = lembrete.kind === "revisao";
+    await pushNotification(
+      userId,
+      `lembrete_${lembrete.kind}`,
+      revisao ? "Hora da revisão" : "Hora da sessão de estudo",
+      revisao
+        ? "Suas revisões do dia estão esperando. Vamos manter o ritmo?"
+        : "Sua sessão de estudo está na hora. Bora começar?",
+      today,
+    );
+  }
+}
