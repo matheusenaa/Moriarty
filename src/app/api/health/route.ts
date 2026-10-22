@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { verificarStorage } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ function errInfo(err: unknown): { code: string | null; message: string } {
 /**
  * Diagnóstico de saúde (sem dados sensíveis). Confirma, em produção, se o banco
  * responde e se as migrações 0004 (catalog_answers) e 0005 (auth_rate_limits)
- * já foram aplicadas.
+ * já foram aplicadas, além do armazenamento de arquivos.
  */
 export async function GET() {
   try {
@@ -22,10 +23,12 @@ export async function GET() {
     const table = await query<{ reg: string | null; rl: string | null }>(
       "SELECT to_regclass('public.catalog_answers') AS reg, to_regclass('public.auth_rate_limits') AS rl",
     );
+    const storage = await verificarStorage();
     return NextResponse.json({
       ok: ping[0]?.ok === 1,
       catalogAnswers: table[0]?.reg ?? null,
       rateLimits: table[0]?.rl ?? null,
+      storage: { modo: storage.modo, bucket: storage.bucket, ok: storage.bucketOk, erro: storage.erro },
     });
   } catch (err) {
     return NextResponse.json({ ok: false, ...errInfo(err) }, { status: 500 });

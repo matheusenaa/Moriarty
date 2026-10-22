@@ -38,6 +38,33 @@ export function modoArmazenamento(): ModoArmazenamento {
   return storageConfigurado() ? "supabase" : "disco";
 }
 
+export type StatusStorage = {
+  modo: ModoArmazenamento;
+  bucket: string;
+  /** null quando não há Supabase configurado; true/false quando o bucket foi testado. */
+  bucketOk: boolean | null;
+  erro?: string;
+};
+
+/** Testa o bucket configurado (usado no diagnóstico de saúde). */
+export async function verificarStorage(): Promise<StatusStorage> {
+  const bucket = bucketStorage();
+  if (!storageConfigurado()) return { modo: "disco", bucket, bucketOk: null };
+  try {
+    const res = await fetch(`${baseUrl()}/storage/v1/bucket/${encodeURIComponent(bucket)}`, {
+      headers: cabecalhos(),
+    });
+    return {
+      modo: "supabase",
+      bucket,
+      bucketOk: res.ok,
+      erro: res.ok ? undefined : `HTTP ${res.status}`,
+    };
+  } catch (err) {
+    return { modo: "supabase", bucket, bucketOk: false, erro: erroDe(err).slice(0, 120) };
+  }
+}
+
 function baseUrl(): string {
   return env("SUPABASE_URL").replace(/\/+$/, "");
 }
