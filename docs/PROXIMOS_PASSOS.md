@@ -8,8 +8,10 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 - **Testes de render na UI:** cobertura dos **componentes cliente das trilhas** em
   `tests/ui-catalog.test.tsx` (Testing Library + jsdom): virar flashcard, selecionar alternativa,
   ver gabarito/explicação, "você acertou/errou", "responder de novo", aviso de tentativa anterior e
-  botões de progresso. Falta cobrir as **páginas** (server components) — exigem mock do
-  `getCurrentUser`/banco ou o runner do Next.
+  botões de progresso. As **páginas** (server components) também estão cobertas em
+  `tests/paginas.test.tsx`, que renderiza de verdade as páginas de concursos e de trilha com o
+  repositório mockado — é a rede de segurança do bug 500 (função de `"use client"` chamada no
+  servidor). Ainda falta cobrir as demais páginas (Central, Plano, Revisões, Perfil).
 - **Verificação de conteúdo periódica:** rotina automatizada em `tests/conteudo.test.ts` (roda sem
   banco) — valida metadados das 6 trilhas, `edital_ref`/`checked_at`, links oficiais, formato dos
   flashcards, gabaritos e a regra de direitos autorais. O teste **falha** se `CHECKED_AT` passar de

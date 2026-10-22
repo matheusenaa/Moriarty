@@ -30,6 +30,8 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
   `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e `Strict-Transport-Security`.
 - **Testes de render de UI** (`tests/ui-catalog.test.tsx`, Testing Library + jsdom) e **guarda
   cliente/servidor** (`tests/fronteira-cliente-servidor.test.ts`).
+- **Testes de render das páginas** (`tests/paginas.test.tsx`): as páginas de concursos e de trilha
+  são renderizadas de verdade (ReactDOM server) com o repositório mockado.
 
 ### Corrigido
 
