@@ -5,8 +5,11 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 
 ## Curto prazo (qualidade e confiança)
 
-- **Testes de render na UI:** teste de render das páginas `/biblioteca/concursos` e `/[slug]` com
-  Testing Library (hoje a cobertura é de repositório + lógica, não de JSX).
+- **Testes de render na UI:** cobertura dos **componentes cliente das trilhas** em
+  `tests/ui-catalog.test.tsx` (Testing Library + jsdom): virar flashcard, selecionar alternativa,
+  ver gabarito/explicação, "você acertou/errou", "responder de novo", aviso de tentativa anterior e
+  botões de progresso. Falta cobrir as **páginas** (server components) — exigem mock do
+  `getCurrentUser`/banco ou o runner do Next.
 - **Verificação de conteúdo periódica:** rotina automatizada em `tests/conteudo.test.ts` (roda sem
   banco) — valida metadados das 6 trilhas, `edital_ref`/`checked_at`, links oficiais, formato dos
   flashcards, gabaritos e a regra de direitos autorais. O teste **falha** se `CHECKED_AT` passar de
@@ -34,6 +37,7 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   novas (pcdf-agente, pmdf-soldado, policia-penal).
 - Guarda da fronteira cliente/servidor (`tests/fronteira-cliente-servidor.test.ts`): impede que um
   server component chame função exportada por um módulo `"use client"` (quebra em runtime).
+- Testes de render de UI (Testing Library + jsdom) nos componentes cliente das trilhas.
 
 ## Longo prazo (plataforma)
 
