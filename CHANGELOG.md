@@ -39,6 +39,10 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
 - **Contribuição de conteúdo com moderação** (`/contribuir`, `/admin/contribuicoes`): alunos sugerem
   notas/questões/flashcards para as trilhas; admins aprovam/rejeitam; itens aprovados entram no
   catálogo com atribuição de autoria. Nova tabela `content_contributions` (migração `0007`).
+- **Exclusão física de conta (LGPD)** (`/perfil` → "Excluir permanentemente"): `DELETE FROM users`
+  com `ON DELETE CASCADE` em todas as tabelas dependentes (progresso, respostas, materiais,
+  sessões, revisões, simulados, quiz, contribuições, amizades, XP, password_resets). Opção
+  "suave" mantida (anonimização + `deleted_at`). Botão com confirmação `EXCLUIR DEFINITIVAMENTE`.
 
 ### Corrigido
 

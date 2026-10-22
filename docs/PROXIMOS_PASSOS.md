@@ -62,13 +62,13 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   para as trilhas; administradores aprovam/rejeitam em `/admin/contribuicoes`; itens aprovados entram
   no catálogo com autoria do aluno e aviso "NÃO é questão oficial". Tabela `content_contributions`
   (migração `0007`).
+- Exclusão física de conta (LGPD): `DELETE FROM users` com cascade total; opção suave mantida
+  (anonimização + `deleted_at`). Confirmação `EXCLUIR DEFINITIVAMENTE` no Perfil.
 
 ## Longo prazo (plataforma)
 
-- **PostgreSQL/Supabase:** concluído — migrations `0001`–`0005` aplicadas, camada `src/lib/repo/*`
+- **PostgreSQL/Supabase:** concluído — migrations `0001`–`0007` aplicadas, camada `src/lib/repo/*`
   reescrita com `pg`, autenticação própria e seed portable (`db/postgres/seed_catalogo.sql`).
-  A migration `0006_catalog_quiz_attempts.sql` (simulados por trilha) está pronta e precisa ser
-  aplicada no Supabase (SQL Editor); sem ela apenas o simulado fica indisponível.
 - **Lembretes por push/e-mail:** hoje apenas notificações internas (sino do app).
 - **Internacionalização:** pt-BR hoje; separar strings para pt-BR/es/en.
 
@@ -76,8 +76,6 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
 
 - `code: "investigador"` em `src/lib/xp.ts` mantido por compatibilidade, embora o rótulo exibido
   tenha mudado — renomear exige migração de dados e revisão dos testes de XP.
-- Exclusão de conta é lógica (`deleted_at`); avaliar apagamento físico conforme política de
-  privacidade.
 - `.mjs` do seed não é typechecked (apenas `allowJs` na importação); considera-se mover dados para
   `.ts` sob `src/` se a tipagem do conteúdo crescer.
 
