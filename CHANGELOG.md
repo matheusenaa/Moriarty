@@ -43,6 +43,10 @@ Todas as mudanças relevantes do Moriarty. Formato baseado em [Keep a Changelog]
   com `ON DELETE CASCADE` em todas as tabelas dependentes (progresso, respostas, materiais,
   sessões, revisões, simulados, quiz, contribuições, amizades, XP, password_resets). Opção
   "suave" mantida (anonimização + `deleted_at`). Botão com confirmação `EXCLUIR DEFINITIVAMENTE`.
+- **3 novas trilhas de concursos** (total: **9 trilhas / 185+ itens**):
+  - **PF — Perito Criminal Federal 2025** (`pf-perito-2025`): Química, Física, Biologia, Informática + bloco jurídico; cadeia de custódia, perícia digital/LGPD.
+  - **PF — Administrativo 2025** (`pf-adm-2025`): Licitações (Lei 14.133/21), improbidade, legislação PF; foco em Português/RLM.
+  - **PCDF — Escrivão / Papiloscopista 2025** (`pcdf-escrivao-2025`): Inquérito policial (CPP), legislação PCDF, Penal/Processual Penal forte.
 
 ### Corrigido
 

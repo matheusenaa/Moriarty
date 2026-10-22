@@ -13,11 +13,9 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   repositório mockado — é a rede de segurança do bug 500 (função de `"use client"` chamada no
   servidor). Ainda falta cobrir as demais páginas (Central, Plano, Revisões, Perfil).
 - **Verificação de conteúdo periódica:** rotina automatizada em `tests/conteudo.test.ts` (roda sem
-  banco) — valida metadados das 6 trilhas, `edital_ref`/`checked_at`, links oficiais, formato dos
+  banco) — valida metadados das **9 trilhas**, `edital_ref`/`checked_at`, links oficiais, formato dos
   flashcards, gabaritos e a regra de direitos autorais. O teste **falha** se `CHECKED_AT` passar de
   180 dias, obrigando a reverificar as fontes. Ainda falta a conferência manual dos links/ediçais.
-- **Mais trilhas:** adicionar concursos (ex.: PRF novo edital, PF por cargo específico, PM/PC
-  estaduais) reaproveitando `constitutionalNote` e o seed idempotente.
 
 ## Médio prazo (produto)
 
@@ -33,7 +31,7 @@ inicial de concursos (PMDF, PF, PRF). Itens marcados **[bloqueado]** dependem de
   no Desempenho) em `catalog_answers`.
 - Roteiro de estudo exportável por trilha (HTML imprimível para PDF + download `.md`).
 - Agente de busca em fontes oficiais fixas (determinístico, sem IA paga) — 28 leis.
-- Trilhas adicionais: PCDF Agente/Investigador, PMDF Soldado (praças) e Polícia Penal.
+- Trilhas adicionais: PCDF Agente/Investigador, PMDF Soldado (praças), Polícia Penal, **PF Perito 2025**, **PF Administrativo 2025**, **PCDF Escrivão/Papiloscopista 2025** (total 9 trilhas).
 - Seed executável pela interface (botão em `/admin`), sem terminal e sem colar SQL.
 - Testes de integridade do conteúdo (`tests/conteudo.test.ts`, sem banco) e flashcards nas trilhas
   novas (pcdf-agente, pmdf-soldado, policia-penal).
