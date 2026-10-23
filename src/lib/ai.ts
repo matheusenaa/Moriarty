@@ -27,11 +27,51 @@ export function aiConfigured(): boolean {
 }
 
 export function aiInfo(): { configured: boolean; provider: string; dailyLimit: number } {
+  const raw = Number(process.env.AI_DAILY_LIMIT || 20);
   return {
     configured: aiConfigured(),
     provider: process.env.AI_PROVIDER || "nenhum",
-    dailyLimit: Number(process.env.AI_DAILY_LIMIT || 20),
+    dailyLimit: Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 20,
   };
+}
+
+function geminiModel(): string {
+  return process.env.AI_MODEL || "gemini-2.5-flash";
+}
+
+function geminiEndpoint(): string {
+  return "https://generativelanguage.googleapis.com/v1beta/models/" + geminiModel() + ":generateContent";
+}
+
+async function callGemini(prompt: string, schema?: object): Promise<string> {
+  if (!aiConfigured()) throw new NotConfiguredError();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const generationConfig: Record<string, unknown> = { temperature: 0.4 };
+    if (schema) {
+      generationConfig.responseMimeType = "application/json";
+      generationConfig.responseSchema = schema;
+    } else {
+      generationConfig.responseMimeType = "application/json";
+    }
+    const res = await fetch(geminiEndpoint(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": process.env.AI_API_KEY || "",
+      },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new ProviderError(`Provedor respondeu ${res.status}.`);
+    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new ProviderError("Resposta vazia do provedor.");
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 type AiSession = {
@@ -64,22 +104,7 @@ Sessão de ${input.sessionMinutes} minutos. Meta semanal: ${input.weeklyHoursTar
 Responda SOMENTE JSON: {"sessions":[{"date":"AAAA-MM-DD","startMinute":0,"plannedMinutes":50,"subjectName":"...","kind":"estudo|revisao|simulado","reason":"..."}],"explanation":["..."]}.
 Máximo 21 dias, respeite a disponibilidade e a lista de matérias: ${JSON.stringify(subjectNames)}.`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + (process.env.AI_MODEL || "gemini-2.0-flash") + ":generateContent", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": process.env.AI_API_KEY || "",
-      },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) throw new ProviderError(`Provedor respondeu ${res.status}.`);
-    const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new ProviderError("Resposta vazia do provedor.");
+    const text = await callGemini(prompt);
     const parsed = JSON.parse(text) as AiPlan;
     if (!Array.isArray(parsed.sessions)) throw new ProviderError("Resposta da IA sem campo sessions.");
 
@@ -113,4 +138,104 @@ Máximo 21 dias, respeite a disponibilidade e a lista de matérias: ${JSON.strin
       aiNote: `IA indisponível (${msg}). Plano gerado pelo algoritmo local determinístico.`,
     };
   }
+}
+
+export type TutorContext = {
+  user: { displayName: string };
+  today: string;
+  timezone: string;
+  goal: { title: string; examName: string; examDate: string | null; weeklyHoursTarget: number } | null;
+  subjects: { name: string; priority: number; mastery: number }[];
+  sessions: { date: string; startMinute: number; plannedMinutes: number; subjectName: string | null; kind: string; status: string }[];
+  reviewsDue: number;
+  reviews: { title: string; dueDate: string; subjectName: string | null }[];
+  materials: { title: string; type: string; subjectName: string | null }[];
+  accuracy: { subjectName: string; correct: number; total: number }[];
+  streak: number;
+};
+
+export type TutorReply = {
+  reply: string;
+  actions: Array<
+    | { kind: "create_session"; payload: { date: string; startMinute: number; plannedMinutes: number; subjectName: string; kind: "estudo" | "revisao" | "simulado"; notes: string } }
+    | { kind: "schedule_review"; payload: { title: string; subjectName: string | null; dueInDays: number } }
+    | { kind: "create_goal"; payload: { title: string; examName: string; examDate: string | null; weeklyHoursTarget: number; sessionMinutes: number } }
+  >;
+};
+
+export async function tutorChat(input: { context: TutorContext; history: Array<{ role: "user" | "assistant"; body: string }>; message: string }): Promise<TutorReply> {
+  if (!aiConfigured()) throw new NotConfiguredError();
+  const hist = input.history.slice(-12).map((h) => `${h.role === "user" ? "Usuário" : "Moriarty"}: ${h.body}`).join("\n");
+  const prompt = `Você é Moriarty, tutor de estudos prático, direto e objetivo.
+Responda em português do Brasil. Nunca invente dados sensíveis. NÃO execute ações sozinho: apenas proponha ações com dados concretos.
+Contexto: ${JSON.stringify(input.context)}
+Histórico recente:\n${hist || "(sem histórico)"}
+Pergunta do usuário: ${input.message}
+
+Responda APENAS JSON com este formato:
+{"reply":"texto curto e útil","actions":[{"kind":"create_session|schedule_review|create_goal","payload":{...}}]}
+Regras:
+- Para create_session: payload deve ter date (AAAA-MM-DD), startMinute (int), plannedMinutes (int), subjectName, kind (estudo|revisao|simulado), notes.
+- Para schedule_review: payload deve ter title, subjectName (ou null), dueInDays (int >=1).
+- Para create_goal: payload deve ter title, examName, examDate (AAAA-MM-DD ou null), weeklyHoursTarget (int), sessionMinutes (int).
+- Máximo 3 ações. Se não houver ação útil, retorne actions: [].
+- Seja breve. Não use listas longas.`;
+  const text = await callGemini(prompt);
+  const parsed = JSON.parse(text) as TutorReply;
+  if (!Array.isArray(parsed.actions)) parsed.actions = [];
+  parsed.actions = parsed.actions.slice(0, 3);
+  return parsed;
+}
+
+export type GeneratedQuestion = {
+  statement: string;
+  type: "multipla" | "certo_errado";
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  difficulty: number;
+};
+
+const questionGenSchema = {
+  type: "OBJECT",
+  properties: {
+    questions: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          statement: { type: "STRING" },
+          type: { type: "STRING", enum: ["multipla", "certo_errado"] },
+          options: { type: "ARRAY", items: { type: "STRING" } },
+          correctIndex: { type: "INTEGER" },
+          explanation: { type: "STRING" },
+          difficulty: { type: "INTEGER" },
+        },
+        required: ["statement", "type", "options", "correctIndex", "explanation", "difficulty"],
+      },
+    },
+  },
+  required: ["questions"],
+} as const;
+
+export async function generateQuestions(input: { subjectName: string; topic?: string; count: number; difficulty?: number }): Promise<GeneratedQuestion[]> {
+  if (!aiConfigured()) throw new NotConfiguredError();
+  const count = Math.min(Math.max(Math.trunc(input.count) || 3, 1), 10);
+  const diff = input.difficulty ?? 3;
+  const prompt = `Crie ${count} questões autorais para estudo, em português do Brasil, sobre a matéria "${input.subjectName}"${input.topic ? ` (tópico: ${input.topic})` : ""}.
+Nível de dificuldade: ${diff}/5. Priorize clareza e aplicação prática.
+Para múltipla escolha use 4 alternativas. Para certo/errado use ["Certo","Errado"].
+Sempre inclua uma explicação breve. Marque corretamente correctIndex.
+Responda APENAS JSON: {"questions":[...]} com os campos solicitados.`;
+  const text = await callGemini(prompt, questionGenSchema as object);
+  const parsed = JSON.parse(text) as { questions: GeneratedQuestion[] };
+  const out = Array.isArray(parsed.questions) ? parsed.questions : [];
+  return out.slice(0, count).map((q) => ({
+    statement: String(q.statement).slice(0, 5000),
+    type: q.type === "certo_errado" ? "certo_errado" : "multipla",
+    options: Array.isArray(q.options) ? q.options.map((o) => String(o).slice(0, 500)) : [],
+    correctIndex: Number(q.correctIndex) || 0,
+    explanation: String(q.explanation).slice(0, 3000),
+    difficulty: Math.min(Math.max(Number(q.difficulty) || diff, 1), 5),
+  }));
 }

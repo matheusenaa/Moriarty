@@ -3,9 +3,18 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { updateProfile } from "@/lib/repo/profile";
+import {
+  getProfile,
+  updateProfile,
+  updateProfilePhoto,
+  updateProfilePhrase,
+  updateUserStatus,
+} from "@/lib/repo/profile";
 import { upsertReminder, listReminders, markNotificationRead, markAllNotificationsRead } from "@/lib/repo/notifications";
 import { parseHHMM } from "@/lib/dates";
+import { uid } from "@/lib/db";
+import { removerArquivo, salvarArquivo } from "@/lib/storage";
+import { USER_STATUSES, type UserStatus } from "@/lib/user-status";
 import type { ActionState } from "./auth";
 export type { ActionState };
 
@@ -29,6 +38,52 @@ export async function saveProfileAction(_prev: ActionState, formData: FormData):
   revalidatePath("/perfil");
   revalidatePath("/central");
   return { ok: true, message: "Preferências salvas." };
+}
+
+export async function updateProfilePhotoAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const file = formData.get("photo") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "Selecione uma imagem." };
+  if (file.size > 4 * 1024 * 1024) return { ok: false, error: "Arquivo excede o limite de 4 MB." };
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) return { ok: false, error: "Formato inválido. Use JPG, PNG ou WebP." };
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : "webp";
+  const destino = `${user.id}/avatar-${uid().slice(0, 8)}.${ext}`;
+  const resultado = await salvarArquivo(destino, buffer, file.type);
+  if (!resultado.ok) return { ok: false, error: resultado.erro ?? "Falha no upload." };
+
+  const atual = await getProfile(user.id);
+  if (atual?.photo_url && atual.photo_url !== destino) {
+    await removerArquivo(atual.photo_url);
+  }
+
+  await updateProfilePhoto(user.id, destino);
+  revalidatePath("/perfil");
+  revalidatePath("/amigos");
+  return { ok: true, message: "Foto atualizada." };
+}
+
+export async function updateProfilePhraseAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const phrase = String(formData.get("phrase") ?? "").trim();
+  if (phrase.length > 200) return { ok: false, error: "A frase deve ter no máximo 200 caracteres." };
+  await updateProfilePhrase(user.id, phrase || null);
+  revalidatePath("/perfil");
+  revalidatePath("/amigos");
+  return { ok: true, message: "Frase atualizada." };
+}
+
+export async function updateUserStatusAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const status = String(formData.get("status") ?? "") as UserStatus;
+  if (!(USER_STATUSES as readonly string[]).includes(status)) return { ok: false, error: "Status inválido." };
+  await updateUserStatus(user.id, status);
+  revalidatePath("/perfil");
+  revalidatePath("/amigos");
+  revalidatePath("/central");
+  return { ok: true, message: "Status atualizado." };
 }
 
 export async function saveReminderAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

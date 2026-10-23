@@ -18,6 +18,7 @@ let reviews: typeof import("@/lib/repo/reviews");
 let gamification: typeof import("@/lib/repo/gamification");
 let quizRepo: typeof import("@/lib/repo/quiz");
 let profile: typeof import("@/lib/repo/profile");
+let agentRepo: typeof import("@/lib/repo/agent");
 
 let userA: string;
 let userB: string;
@@ -34,6 +35,7 @@ beforeAll(async () => {
   gamification = await import("@/lib/repo/gamification");
   quizRepo = await import("@/lib/repo/quiz");
   profile = await import("@/lib/repo/profile");
+  agentRepo = await import("@/lib/repo/agent");
 
   userA = await profile.createUser("a@teste.local", "hash-a");
   await profile.setInitialUsername(userA, "alice", "Alice");
@@ -318,5 +320,78 @@ describe("cópia preserva origem e não concede edição do original", () => {
     expect(await materials.updateMaterial(userB, idA, { title: "hack" })).toBe(false);
     // E o original continua com o dono A:
     expect((await materials.getMaterial(userA, idA))?.title).toBe("Original de A");
+  });
+});
+
+describe("10. chat entre amigos", () => {
+  it("só libera conversa com amizade aceita e isola as mensagens", async () => {
+    const ana = await profile.createUser("ana@teste.local", "hash");
+    await profile.setInitialUsername(ana, "ana", "Ana");
+    const bruno = await profile.createUser("bruno@teste.local", "hash");
+    await profile.setInitialUsername(bruno, "bruno", "Bruno");
+
+    expect(await profile.canChat(ana, bruno)).toBe(false);
+    await social.sendFriendRequest(ana, bruno);
+    const pendentes = await social.listPendingRequests(bruno);
+    const pedido = pendentes.received.find((r) => r.from_user === ana);
+    expect(pedido).toBeTruthy();
+    await social.decideFriendRequest(bruno, pedido!.id, "aceite");
+    expect(await profile.canChat(ana, bruno)).toBe(true);
+
+    await profile.sendChatMessage(ana, bruno, "primeira");
+    await profile.sendChatMessage(ana, bruno, "segunda");
+
+    expect(await profile.getChatMessages(ana, bruno, 1)).toHaveLength(1);
+    expect(await profile.getChatMessages(bruno, ana)).toHaveLength(2);
+    expect(await profile.countUnreadFrom(bruno, ana)).toBe(2);
+    expect(await profile.getChatMessages(userA, bruno)).toHaveLength(0);
+
+    await profile.markChatMessagesRead(bruno, ana);
+    expect(await profile.countUnreadFrom(bruno, ana)).toBe(0);
+    expect(await profile.canChat(userA, bruno)).toBe(false);
+  });
+});
+
+describe("11. tutor de IA mantém isolamento e cota por usuário", () => {
+  it("histórico do tutor é privado e ações só podem ser confirmadas pelo dono", async () => {
+    const ana = await profile.createUser("ana-ia@teste.local", "hash");
+    await profile.setInitialUsername(ana, "anaia", "Ana IA");
+    const bruno = await profile.createUser("bruno-ia@teste.local", "hash");
+    await profile.setInitialUsername(bruno, "brunoia", "Bruno IA");
+
+    const turn = await agentRepo.saveAgentTurn(ana, "me ajude", "Claro.", [
+      {
+        kind: "create_goal",
+        payload: {
+          title: "OAB",
+          examName: "OAB",
+          examDate: "2026-11-30",
+          weeklyHoursTarget: 7,
+          sessionMinutes: 60,
+        },
+      },
+    ]);
+
+    expect(await agentRepo.listAgentMessages(ana)).toHaveLength(2);
+    expect(await agentRepo.listAgentMessages(bruno)).toHaveLength(0);
+
+    const actions = await agentRepo.listAgentActions(ana);
+    const action = actions.find((a) => a.message_id === turn.assistantMessage.id);
+    expect(action).toBeTruthy();
+    expect(await agentRepo.claimAgentAction(bruno, action!.id)).toBeNull();
+    expect(await agentRepo.claimAgentAction(ana, action!.id)).not.toBeNull();
+  });
+
+  it("a cota diária é individual e bloqueia ao atingir o limite", async () => {
+    const ana = await profile.createUser("cota-a@teste.local", "hash");
+    await profile.setInitialUsername(ana, "cotaia", "Cota IA");
+    const bruno = await profile.createUser("cota-b@teste.local", "hash");
+    await profile.setInitialUsername(bruno, "cotasem", "Sem Cota");
+
+    expect(await agentRepo.consumeAiQuota(ana, "2026-10-24", 2)).toBe(true);
+    expect(await agentRepo.consumeAiQuota(ana, "2026-10-24", 2)).toBe(true);
+    expect(await agentRepo.consumeAiQuota(ana, "2026-10-24", 2)).toBe(false);
+    expect((await agentRepo.getAiUsage(ana, "2026-10-24", 2)).remaining).toBe(0);
+    expect(await agentRepo.consumeAiQuota(bruno, "2026-10-24", 2)).toBe(true);
   });
 });

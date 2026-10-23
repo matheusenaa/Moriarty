@@ -274,6 +274,19 @@ export async function copyMaterial(targetUserId: string, source: MaterialRow): P
   return id;
 }
 
+/** Índice leve (sem conteúdo nem arquivos) para o contexto do tutor de IA. */
+export function listMaterialIndex(
+  userId: string,
+  limit = 40,
+): Promise<{ id: string; title: string; type: string; subject_id: string | null }[]> {
+  return query<{ id: string; title: string; type: string; subject_id: string | null }>(
+    `SELECT id, title, type, subject_id FROM materials
+      WHERE user_id = $1 AND archived = 0
+      ORDER BY updated_at DESC LIMIT $2`,
+    [userId, Math.min(Math.max(limit, 1), 100)],
+  );
+}
+
 export async function countMaterials(userId: string): Promise<number> {
   const row = await queryOne<{ c: string }>(
     "SELECT COUNT(*) c FROM materials WHERE user_id = $1 AND archived = 0",

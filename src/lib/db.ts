@@ -33,7 +33,9 @@ export function getPool(): Pool {
   pool = new Pool({
     connectionString: url,
     ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
-    max: 10,
+    max: process.env.VERCEL ? 1 : 10,
+    idleTimeoutMillis: 20000,
+    connectionTimeoutMillis: 10000,
   });
   return pool;
 }

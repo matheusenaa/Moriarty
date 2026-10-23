@@ -30,6 +30,35 @@ export function listFriends(userId: string): Promise<FriendRow[]> {
   );
 }
 
+/** Amigo com os dados públicos do perfil e o status tipo MSN. */
+export type FriendWithStatus = {
+  id: string;
+  username: string;
+  display_name: string;
+  photo_url: string | null;
+  custom_phrase: string | null;
+  user_status: "ocupado" | "estudando" | "revisando" | "disponivel";
+  friends_since: string;
+  unread_count: number;
+};
+
+export function listFriendsWithStatus(userId: string): Promise<FriendWithStatus[]> {
+  return query<FriendWithStatus>(
+    `SELECT CASE WHEN f.user_a = $1 THEN f.user_b ELSE f.user_a END AS id,
+            p.username, p.display_name, p.photo_url, p.custom_phrase, p.user_status,
+            f.created_at AS friends_since,
+            (SELECT COUNT(*)::int FROM chat_messages cm
+              WHERE cm.to_user_id = $1
+                AND cm.from_user_id = CASE WHEN f.user_a = $1 THEN f.user_b ELSE f.user_a END
+                AND cm.read_at IS NULL) AS unread_count
+       FROM friendships f
+       JOIN profiles p ON p.user_id = CASE WHEN f.user_a = $1 THEN f.user_b ELSE f.user_a END
+      WHERE f.user_a = $1 OR f.user_b = $1
+      ORDER BY unread_count DESC, lower(p.display_name)`,
+    [userId],
+  );
+}
+
 export async function isBlocked(blocker: string, blocked: string): Promise<boolean> {
   const row = await queryOne("SELECT 1 FROM blocks WHERE blocker = $1 AND blocked = $2", [blocker, blocked]);
   return !!row;

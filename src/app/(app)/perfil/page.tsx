@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getProfile, getUserAuth } from "@/lib/repo/profile";
+import { normalizarStatus } from "@/lib/user-status";
 import { listReminders } from "@/lib/repo/notifications";
 import { Card, CardTitle, CardDescription } from "@/components/Card";
 import { ProfileForm } from "@/components/ProfileForm";
+import { ProfileIdentity } from "@/components/ProfileIdentity";
 import { ReminderForm } from "@/components/ReminderForm";
 import { ExportButton } from "@/components/ExportButton";
 import { DeleteAccountForm } from "@/components/DeleteAccountForm";
@@ -27,14 +29,39 @@ export default async function PerfilPage() {
   const rank = gamification ? rankForXp(gamification.xp) : null;
   const isAdmin = ehAdmin(user.email);
 
+  const photoUrl = profile?.photo_url
+    ? `/api/avatar/${user.id}?v=${encodeURIComponent(profile.photo_url)}`
+    : null;
+  const currentPhrase = profile?.custom_phrase ?? "";
+  const currentStatus = normalizarStatus(profile?.user_status);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h1 className="font-titulo text-3xl font-bold">Perfil e configurações</h1>
-        <p className="text-sm text-cinza">
-          @{user.username} · {user.email}
-        </p>
+      <header className="space-y-4">
+        <div>
+          <h1 className="font-titulo text-3xl font-bold">Perfil e configurações</h1>
+          <p className="text-sm text-cinza">
+            @{user.username} · {user.email}
+          </p>
+        </div>
       </header>
+
+      <Card>
+        <CardTitle>Como seus amigos veem você</CardTitle>
+        <CardDescription>
+          A foto, a frase e o status aparecem para os amigos e no chat. Tudo fica hospedado de graça
+          no armazenamento da própria plataforma.
+        </CardDescription>
+        <div className="mt-4">
+          <ProfileIdentity
+            username={user.username}
+            displayName={user.displayName}
+            photoUrl={photoUrl}
+            phrase={currentPhrase}
+            status={currentStatus}
+          />
+        </div>
+      </Card>
 
       {gamification && rank ? (
         <Card>

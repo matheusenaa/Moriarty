@@ -53,6 +53,9 @@ sem expor nenhum dado de progresso.
 - **Arquivo público:** materiais marcados como públicos, com busca.
 - **Gamificação opcional:** XP idempotente, patentes (Aprendiz → Mestre) e conquistas; pode ser
   desativada nas preferências.
+- **Tutor de IA opcional:** widget flutuante com avatar, histórico, cota diária e ações propostas
+  (criar sessão, agendar revisão, criar objetivo) que exigem confirmação; geração de questões
+  autorais com revisão humana antes de salvar.
 - **Lembretes internos:** notificações no sino do app (sem promessa de e-mail ou push).
 - **Conta:** exportação completa em JSON e exclusão de conta com confirmação explícita.
 
@@ -196,7 +199,9 @@ sua política de privacidade exigir apagamento físico.
 
 O app funciona 100% sem IA. Com `AI_PROVIDER=gemini` e `AI_API_KEY`, a geração de cronograma pode
 usar o modelo; em qualquer falha, limite ou resposta inválida, o motor determinístico assume.
-Detalhes, dados enviados e custos em [`docs/IA.md`](docs/IA.md).
+Com a IA configurada, também ficam disponíveis um tutor online flutuante (com ações que só são
+aplicadas após confirmação) e a geração de questões para revisão humana. Cada usuário tem cota
+diária configurável (`AI_DAILY_LIMIT`). Detalhes, dados enviados e custos em [`docs/IA.md`](docs/IA.md).
 
 ## Limitações conhecidas
 

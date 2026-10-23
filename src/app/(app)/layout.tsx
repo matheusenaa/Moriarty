@@ -23,10 +23,15 @@ import { minuteOfDayInTz, todayStr, weekdayOf } from "@/lib/dates";
 import { NavClient } from "@/components/NavClient";
 import { NotificationList } from "@/components/NotificationList";
 import { gamificationSummary } from "@/lib/repo/gamification";
+import { countTotalUnread } from "@/lib/repo/profile";
+import { listSubjects } from "@/lib/repo/planning";
+import { getAiUsage } from "@/lib/repo/agent";
+import { aiInfo } from "@/lib/ai";
 import { studyStreak } from "@/lib/repo/stats";
 import { rankForXp, progressToNextRank } from "@/lib/xp";
 import { ProgressBar } from "@/components/Feedback";
 import { Badge } from "@/components/Badge";
+import { AgentWidget } from "@/components/AgentWidget";
 
 const NAV = [
   { href: "/central", label: "Central", icon: Sparkles },
@@ -59,10 +64,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     minuteOfDayInTz(new Date(), user.timezone),
   );
   const notifications = (await listNotifications(user.id)).filter((n) => !n.read_at).slice(0, 8);
+  const unreadMessages = await countTotalUnread(user.id);
+  const navItems = NAV.map((item) => ({
+    ...item,
+    label: item.href === "/amigos" && unreadMessages > 0 ? `Amigos (${unreadMessages})` : item.label,
+  }));
   const streak = await studyStreak(user.id, today);
   const gamification = user.gamificationEnabled ? await gamificationSummary(user.id, streak) : null;
   const rank = gamification ? rankForXp(gamification.xp) : null;
   const progress = gamification ? progressToNextRank(gamification.xp) : null;
+  const ai = aiInfo();
+  const aiUsage = ai.configured
+    ? await getAiUsage(user.id, today, ai.dailyLimit)
+    : { used: 0, limit: ai.dailyLimit, remaining: ai.dailyLimit, degraded: false };
+  const agentSubjects = (await listSubjects(user.id)).map((s) => ({ id: s.id, name: s.name }));
 
   return (
     <div className="min-h-screen lg:flex">
@@ -72,7 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <p className="font-titulo text-xl font-bold">Central</p>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 p-3" aria-label="Navegação principal">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -119,12 +134,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
             <NotificationList notifications={notifications} />
           </div>
-          <NavClient items={NAV.map(({ href, label }) => ({ href, label }))} />
+          <NavClient items={navItems.map(({ href, label }) => ({ href, label }))} />
         </header>
         <main className="textura-operacional textura-arquivo flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>
       </div>
+      <AgentWidget
+        configured={ai.configured}
+        provider={ai.provider}
+        limit={ai.dailyLimit}
+        initialRemaining={aiUsage.remaining}
+        subjects={agentSubjects}
+      />
     </div>
   );
 }
