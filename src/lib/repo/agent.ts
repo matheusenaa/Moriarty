@@ -51,9 +51,9 @@ export async function listAgentMessages(userId: string, limit = 40): Promise<Age
     `SELECT id, role, body, created_at FROM (
        SELECT id, role, body, created_at FROM agent_messages
         WHERE user_id = $1
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, CASE role WHEN 'user' THEN 0 ELSE 1 END DESC
         LIMIT $2
-     ) recent ORDER BY created_at ASC`,
+     ) recent ORDER BY created_at ASC, CASE role WHEN 'user' THEN 0 ELSE 1 END ASC`,
     [userId, Math.min(Math.max(limit, 1), 100)],
   );
   if (messages.length === 0) return [];
