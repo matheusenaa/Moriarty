@@ -16,9 +16,11 @@ export class NotConfiguredError extends Error {
 }
 
 export class ProviderError extends Error {
-  constructor(message: string) {
+  status?: number;
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "ProviderError";
+    this.status = status;
   }
 }
 
@@ -44,6 +46,23 @@ function geminiEndpoint(): string {
 }
 
 async function callGemini(prompt: string, schema?: object): Promise<string> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await callGeminiOnce(prompt, schema);
+    } catch (err) {
+      const retryable =
+        !(err instanceof NotConfiguredError) &&
+        (!(err instanceof ProviderError) || !err.status || [502, 503, 504].includes(err.status));
+      if (attempt === 0 && retryable) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new ProviderError("Falha ao chamar o provedor de IA.");
+}
+async function callGeminiOnce(prompt: string, schema?: object): Promise<string> {
   if (!aiConfigured()) throw new NotConfiguredError();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
@@ -64,7 +83,7 @@ async function callGemini(prompt: string, schema?: object): Promise<string> {
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
       signal: controller.signal,
     });
-    if (!res.ok) throw new ProviderError(`Provedor respondeu ${res.status}.`);
+    if (!res.ok) throw new ProviderError(`Provedor respondeu ${res.status}.`, res.status);
     const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new ProviderError("Resposta vazia do provedor.");

@@ -78,6 +78,12 @@ export async function POST(request: Request) {
     if (err instanceof NotConfiguredError) {
       return NextResponse.json({ error: "IA não configurada no servidor.", code: "not_configured" }, { status: 503 });
     }
+    if (err instanceof ProviderError && err.status === 503) {
+      return NextResponse.json(
+        { error: "O provedor de IA está temporariamente indisponível. Tente novamente em instantes." },
+        { status: 503 },
+      );
+    }
     if (err instanceof ProviderError) {
       return NextResponse.json({ error: "O provedor de IA não respondeu. Tente novamente." }, { status: 502 });
     }

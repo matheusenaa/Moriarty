@@ -154,11 +154,14 @@ export function AgentWidget({
     setError("");
     setNotice("");
     setSending(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30000);
     try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
+        signal: controller.signal,
       });
       const data = (await res.json()) as {
         message?: AgentMessage;
@@ -171,8 +174,13 @@ export function AgentWidget({
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(text);
-      setError(err instanceof Error ? err.message : "Falha ao enviar.");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("O tutor demorou demais para responder. Tente novamente em instantes.");
+      } else {
+        setError(err instanceof Error ? err.message : "Falha ao enviar.");
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setSending(false);
     }
   }
