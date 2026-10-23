@@ -26,7 +26,7 @@ Atualmente, **Google Gemini** (endpoint `generativelanguage.googleapis.com`). Co
 ```env
 AI_PROVIDER=gemini
 AI_API_KEY=sua-chave
-AI_MODEL=gemini-2.5-flash
+AI_MODEL=gemini-3.5-flash
 AI_DAILY_LIMIT=20
 ```
 

@@ -116,7 +116,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `APP_TIMEZONE` | não | `America/Sao_Paulo` | Fuso padrão de agrupamento de datas. |
 | `AI_PROVIDER` | não | vazio | Provedor de IA (`gemini`). Vazio = motor determinístico. |
 | `AI_API_KEY` | não | vazio | Chave do provedor, usada **apenas no servidor**. |
-| `AI_MODEL` | não | `gemini-2.0-flash` | Modelo do provedor. |
+| `AI_MODEL` | não | `gemini-3.5-flash` | Modelo do provedor. |
 | `AI_DAILY_LIMIT` | não | `20` | Limite diário de chamadas de IA por usuário. |
 
 ## Comandos

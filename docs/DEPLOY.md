@@ -274,7 +274,7 @@ Escolha UMA das opções abaixo.
    - `AUTH_SECRET` = o mesmo segredo aleatório que você gerou (ou um novo).
    - `DATABASE_URL` = a connection string do Supabase (Session Pooler, do projeto de produção).
    - `APP_TIMEZONE` = `America/Sao_Paulo`
-   - (opcional, IA) `AI_PROVIDER=gemini`, `AI_API_KEY=...`, `AI_MODEL=gemini-2.0-flash`,
+   - (opcional, IA) `AI_PROVIDER=gemini`, `AI_API_KEY=...`, `AI_MODEL=gemini-3.5-flash`,
      `AI_DAILY_LIMIT=20`
 7. Clique em **Create Web Service** / **Deploy**.
 8. O Render faz o build e sobe o app. Quando terminar, clique no link do topo

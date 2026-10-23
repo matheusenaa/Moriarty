@@ -36,7 +36,7 @@ export function aiInfo(): { configured: boolean; provider: string; dailyLimit: n
 }
 
 function geminiModel(): string {
-  return process.env.AI_MODEL || "gemini-2.5-flash";
+  return process.env.AI_MODEL || "gemini-3.5-flash";
 }
 
 function geminiEndpoint(): string {
