@@ -22,6 +22,7 @@ const MIGRATIONS = [
   { name: "007_content_contributions", file: path.join("db", "postgres", "0007_content_contributions.sql") },
   { name: "008_profile_photo_phrase_status_chat", file: path.join("db", "postgres", "0008_profile_photo_phrase_status_chat.sql") },
   { name: "009_ai_tutor", file: path.join("db", "postgres", "0009_ai_tutor.sql") },
+  { name: "0010_study_timer", file: path.join("db", "postgres", "0010_study_timer.sql") },
 ];
 
 function loadEnv() {

@@ -4,28 +4,32 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
+import { nowIso } from "@/lib/db";
 import { todayStr, addDays, isValidDateStr, parseHHMM, weekStart } from "@/lib/dates";
 import {
   addUnavailableDate,
+  createActivity,
   createGoal,
   createSession,
   createSubject,
   createTopic,
+  deleteActivity,
   deleteSession,
-  deleteTopic,
-  getActiveGoal,
-  getSession,
-  getSubject,
-  listAvailability,
+  deleteTimerSession,
+  getActivity,
+  getTimerSession,
+  listActivities,
   listSessions,
   listSubjects,
-  listUnavailableDates,
+  listTimerSessions,
   removeUnavailableDate,
   replaceAvailability,
   saveSchedule,
+  updateActivity,
   updateGoal,
   updateSession,
   updateSubject,
+  updateTimerSession,
 } from "@/lib/repo/planning";
 import { scheduleReview } from "@/lib/repo/reviews";
 import { awardXp, checkCountAchievements } from "@/lib/repo/gamification";
@@ -424,6 +428,213 @@ export async function rescheduleSessionAction(_prev: ActionState, formData: Form
   revalidatePath("/plano");
   revalidatePath("/central");
   return { ok: true, message: "Sessão reagendada. O histórico foi preservado." };
+}
+
+export type StartTimerInput = {
+  subjectId: string | null;
+  topicId: string | null;
+  activityType: string;
+};
+
+export async function startTimerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const subjectId = String(formData.get("subjectId") ?? "").trim() || null;
+  const topicId = String(formData.get("topicId") ?? "").trim() || null;
+  const activityType = String(formData.get("activityType") ?? "").trim() || "";
+
+  // If there's already a running session for this user, pause it first
+  const existingRunning = await listTimerSessions(user.id, todayStr(user.timezone), todayStr(user.timezone));
+  if (existingRunning.length > 0) {
+    const current = existingRunning[0];
+    await updateTimerSession(user.id, current.id, {
+      status: "paused",
+      last_pause_at: nowIso(),
+      resumed_at: current.resumed_at, // keep existing resumed_at
+    });
+    await createActivity(user.id, {
+      subjectId: current.subject_id,
+      topicId: current.topic_id,
+      goalId: current.goal_id,
+      activityType: current.activity_type,
+      date: current.started_at.slice(0, 10),
+      durationSeconds: 0, // will be updated when resumed/completed
+      notes: "",
+      source: "timer",
+      timerSessionId: current.id,
+    });
+  }
+
+  const input: StartTimerInput = { subjectId, topicId, activityType };
+  const timerId = await createTimerSession(user.id, {
+    subjectId,
+    topicId,
+    goalId: null,
+    activityType,
+  });
+
+  return { ok: true, message: "Cronômetro iniciado.", timerId };
+}
+
+export type PauseTimerInput = {
+  timerId: string;
+  notes?: string;
+};
+
+export async function pauseTimerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const timerId = String(formData.get("timerId") ?? "");
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  const timer = await getTimerSession(user.id, timerId);
+  if (!timer) return { ok: false, error: "Sessão de timer não encontrada." };
+
+  if (timer.status !== "running") {
+    return { ok: false, error: "Não é possível pausar uma sessão que não está em execução." };
+  }
+
+  await updateTimerSession(user.id, timerId, {
+    status: "paused",
+    last_pause_at: nowIso(),
+  });
+
+  // Create activity record for the paused segment
+  await createActivity(user.id, {
+    subjectId: timer.subject_id,
+    topicId: timer.topic_id,
+    goalId: timer.goal_id,
+    activityType: timer.activity_type,
+    date: timer.started_at.slice(0, 10),
+    durationSeconds: timer.accumulated_seconds,
+    notes,
+    source: "timer",
+    timerSessionId: timerId,
+  });
+
+  return { ok: true, message: "Sessão pausada." };
+}
+
+export type ResumeTimerInput = {
+  timerId: string;
+};
+
+export async function resumeTimerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const timerId = String(formData.get("timerId") ?? "");
+
+  const timer = await getTimerSession(user.id, timerId);
+  if (!timer) return { ok: false, error: "Sessão de timer não encontrada." };
+
+  if (timer.status !== "paused") {
+    return { ok: false, error: "Não é possível retomar uma sessão que não está pausada." };
+  }
+
+  // Calculate new accumulated time - the timer was paused, so we keep the accumulated seconds
+  // When resuming, we don't change accumulated_seconds - the visual timer handles the counting up
+  await updateTimerSession(user.id, timerId, {
+    status: "running",
+    resumed_at: nowIso(),
+  });
+
+  return { ok: true, message: "Sessão retomada." };
+}
+
+export type CompleteTimerInput = {
+  timerId: string;
+  status: "concluida" | "parcial" | "adiada" | "cancelada";
+  actualMinutes: number;
+  notes?: string;
+};
+
+export async function completeTimerAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const timerId = String(formData.get("timerId") ?? "");
+  const status = String(formData.get("status") ?? "concluida");
+  const actualMinutes = Number(formData.get("actualMinutes") ?? 0);
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  const timer = await getTimerSession(user.id, timerId);
+  if (!timer) return { ok: false, error: "Sessão de timer não encontrada." };
+
+  const actual = Math.max(0, Math.min(1440, Math.round(actualMinutes)));
+  await updateTimerSession(user.id, timerId, {
+    status,
+    actualMinutes: actual,
+    notes,
+    completed_at: nowIso(),
+  });
+
+  // Create final activity record
+  await createActivity(user.id, {
+    subjectId: timer.subject_id,
+    topicId: timer.topic_id,
+    goalId: timer.goal_id,
+    activityType: timer.activity_type,
+    date: timer.started_at.slice(0, 10),
+    durationSeconds: timer.accumulated_seconds,
+    notes,
+    source: "timer",
+    timerSessionId: timerId,
+  });
+
+  // Award XP for completed sessions
+  let granted = 0;
+  if (status === "concluida" || status === "parcial") {
+    granted += await awardXp(user.id, "sessao_concluida", "study_timer_sessions", timerId);
+    // Schedule reviews based on topics (due in 1 day)
+    const due = addDays(todayStr(user.timezone), 1);
+    // We could schedule reviews, but we need topic titles - for now just award XP
+  }
+  await checkCountAchievements(user.id);
+
+  revalidatePath("/central");
+  revalidatePath("/plano");
+  revalidatePath("/desempenho");
+  return { ok: true, message: granted > 0 ? `Sessão registrada. +${granted} XP.` : "Sessão registrada." };
+}
+
+export type ManualActivityInput = {
+  subjectId: string | null;
+  topicId: string | null;
+  activityType: string;
+  date: string;
+  durationMinutes: number;
+  notes: string;
+};
+
+export async function manualActivityAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const subjectId = String(formData.get("subjectId") ?? "").trim() || null;
+  const topicId = String(formData.get("topicId") ?? "").trim() || null;
+  const activityType = String(formData.get("activityType") ?? "estudo").trim() || "estudo";
+  const date = String(formData.get("date") ?? todayStr(user.timezone));
+  const durationMinutes = Number(formData.get("durationMinutes") ?? 0);
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!isValidDateStr(date)) {
+    return { ok: false, error: "Data inválida." };
+  }
+  if (durationMinutes < 15) {
+    return { ok: false, error: "Mínimo 15 minutos." };
+  }
+  if (durationMinutes > 480) {
+    return { ok: false, error: "Máximo 480 minutos." };
+  }
+
+  await createActivity(user.id, {
+    subjectId,
+    topicId,
+    goalId: null,
+    activityType,
+    date,
+    durationSeconds: durationMinutes * 60,
+    notes,
+    source: "manual",
+    timerSessionId: null,
+  });
+
+  revalidatePath("/central");
+  revalidatePath("/plano");
+  return { ok: true, message: "Atividade manual registrada." };
 }
 
 /** Onboarding: cria objetivo + matérias + disponibilidade de uma vez e marca como concluído. */

@@ -353,6 +353,205 @@ export async function deleteSession(userId: string, id: string): Promise<boolean
   return (await execute("DELETE FROM study_sessions WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
 }
 
+export type TimerSessionRow = {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  topic_id: string | null;
+  goal_id: string | null;
+  activity_type: string;
+  status: string;
+  started_at: string;
+  resumed_at: string | null;
+  last_pause_at: string | null;
+  accumulated_seconds: number;
+  completed_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function createTimerSession(
+  userId: string,
+  data: {
+    subjectId: string | null;
+    topicId: string | null;
+    goalId: string | null;
+    activityType: string;
+  },
+): Promise<string> {
+  const id = uid();
+  const now = nowIso();
+  await execute(
+    `INSERT INTO study_timer_sessions
+      (id, user_id, subject_id, topic_id, goal_id, activity_type, status, started_at, accumulated_seconds, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'running', $7, 0, $8, $8)`,
+    [id, userId, data.subjectId, data.topicId, data.goalId, data.activityType, now, now],
+  );
+  return id;
+}
+
+export async function updateTimerSession(
+  userId: string,
+  id: string,
+  data: Partial<{
+    status: string;
+    accumulated_seconds: number;
+    notes: string;
+    resumed_at: string | null;
+    last_pause_at: string | null;
+    completed_at: string | null;
+  }>,
+): Promise<TimerSessionRow | null> {
+  const current = await getTimerSession(userId, id);
+  if (!current) return null;
+  await execute(
+    `UPDATE study_timer_sessions SET status = $1, accumulated_seconds = $2, notes = $3,
+      resumed_at = $4, last_pause_at = $5, completed_at = $6, updated_at = $7
+     WHERE id = $8 AND user_id = $9`,
+    [
+      data.status ?? current.status,
+      data.accumulated_seconds ?? current.accumulated_seconds,
+      data.notes ?? current.notes,
+      data.resumed_at ?? current.resumed_at,
+      data.last_pause_at ?? current.last_pause_at,
+      data.completed_at ?? current.completed_at,
+      nowIso(),
+      id,
+      userId,
+    ],
+  );
+  return getTimerSession(userId, id);
+}
+
+export async function getTimerSession(userId: string, id: string): Promise<TimerSessionRow | null> {
+  return queryOne<TimerSessionRow>(
+    `SELECT * FROM study_timer_sessions WHERE id = $1 AND user_id = $2`,
+    [id, userId],
+  );
+}
+
+export async function listTimerSessions(
+  userId: string,
+  from: string,
+  to: string,
+): Promise<TimerSessionRow[]> {
+  return query<TimerSessionRow>(
+    `SELECT * FROM study_timer_sessions WHERE user_id = $1 AND started_at >= $2 AND started_at <= $3 ORDER BY started_at DESC`,
+    [userId, from, to],
+  );
+}
+
+export async function deleteTimerSession(userId: string, id: string): Promise<boolean> {
+  return (await execute("DELETE FROM study_timer_sessions WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
+}
+
+export type ActivityRow = {
+  id: string;
+  user_id: string;
+  subject_id: string | null;
+  topic_id: string | null;
+  goal_id: string | null;
+  activity_type: string;
+  date: string;
+  duration_seconds: number;
+  duration_minutes: number;
+  notes: string;
+  source: string;
+  timer_session_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function createActivity(
+  userId: string,
+  data: {
+    subjectId: string | null;
+    topicId: string | null;
+    goalId: string | null;
+    activityType: string;
+    date: string;
+    durationSeconds: number;
+    notes: string;
+    source: string;
+    timerSessionId: string | null;
+  },
+): Promise<string> {
+  const id = uid();
+  await execute(
+    `INSERT INTO study_activities
+      (id, user_id, subject_id, topic_id, goal_id, activity_type, date, duration_seconds, duration_minutes, notes, source, timer_session_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+    [
+      id,
+      userId,
+      data.subjectId,
+      data.topicId,
+      data.goalId,
+      data.activityType,
+      data.date,
+      data.durationSeconds,
+      Math.round(data.durationSeconds / 60),
+      data.notes,
+      data.source,
+      data.timerSessionId,
+      nowIso(),
+      nowIso(),
+    ],
+  );
+  return id;
+}
+
+export async function listActivities(
+  userId: string,
+  from: string,
+  to: string,
+): Promise<ActivityRow[]> {
+  return query<ActivityRow>(
+    `SELECT * FROM study_activities WHERE user_id = $1 AND date >= $2 AND date <= $3 ORDER BY date DESC`,
+    [userId, from, to],
+  );
+}
+
+export async function updateActivity(
+  userId: string,
+  id: string,
+  data: Partial<{
+    duration_seconds: number;
+    duration_minutes: number;
+    notes: string;
+    source: string;
+  }>,
+): Promise<ActivityRow | null> {
+  const current = await getActivity(userId, id);
+  if (!current) return null;
+  await execute(
+    `UPDATE study_activities SET duration_seconds = $1, duration_minutes = $2, notes = $3, source = $4, updated_at = $5
+     WHERE id = $6 AND user_id = $7`,
+    [
+      data.duration_seconds ?? current.duration_seconds,
+      data.duration_minutes ?? current.duration_minutes,
+      data.notes ?? current.notes,
+      data.source ?? current.source,
+      nowIso(),
+      id,
+      userId,
+    ],
+  );
+  return getActivity(userId, id);
+}
+
+export async function getActivity(userId: string, id: string): Promise<ActivityRow | null> {
+  return queryOne<ActivityRow>(
+    `SELECT * FROM study_activities WHERE id = $1 AND user_id = $2`,
+    [id, userId],
+  );
+}
+
+export async function deleteActivity(userId: string, id: string): Promise<boolean> {
+  return (await execute("DELETE FROM study_activities WHERE id = $1 AND user_id = $2", [id, userId])) > 0;
+}
+
 export async function saveSchedule(
   userId: string,
   goalId: string,

@@ -15,6 +15,7 @@ import { Badge } from "@/components/Badge";
 import { EmptyState, ProgressBar } from "@/components/Feedback";
 import { SessionCompleteForm } from "@/components/SessionCompleteForm";
 import { accuracyPct } from "@/lib/quiz";
+import { TimerDisplay } from "@/components/TimerDisplay";
 
 export default async function CentralPage() {
   const user = await getCurrentUser();
@@ -45,6 +46,8 @@ export default async function CentralPage() {
         <h1 className="font-titulo text-3xl font-bold">Central de Estudos</h1>
         <p className="text-sm text-cinza">O que precisa de atenção hoje, {today}.</p>
       </header>
+
+      <TimerDisplay initialSubjectId={undefined} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
