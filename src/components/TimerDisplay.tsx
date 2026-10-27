@@ -83,7 +83,7 @@ export function TimerDisplay({
     } else {
       setMessage(error ?? "Erro ao pausar.");
     }
-  }, [timerId, notes]);
+  }, [timerId, notes, pauseTimerAction]);
 
   const handleResume = useCallback(async () => {
     if (!timerId) return;
@@ -97,12 +97,12 @@ export function TimerDisplay({
     } else {
       setMessage(error ?? "Erro ao retomar.");
     }
-  }, [timerId]);
+  }, [timerId, resumeTimerAction]);
 
   const handleComplete = useCallback(async () => {
     if (!timerId) return;
     setFormOpen(true);
-  }, [timerId]);
+  }, [timerId, handleComplete]);
 
   const handleFinalize = useCallback(async () => {
     if (!timerId) return;
@@ -121,7 +121,7 @@ export function TimerDisplay({
     } else {
       setMessage(error ?? "Erro ao finalizar.");
     }
-  }, [timerId, formStatus, actualMinutes, notes]);
+  }, [timerId, formStatus, actualMinutes, notes, completeTimerAction]);
 
   const handleManual = useCallback(async () => {
     if (!timerId) return;
@@ -135,7 +135,7 @@ export function TimerDisplay({
     });
     setMessage("Atividade manual registrada.");
     setFormOpen(false);
-  }, [timerId, accumulatedSeconds, notes]);
+  }, [timerId, accumulatedSeconds, notes, manualActivityAction]);
 
   return (
     <div className="rounded-md border border-latao/30 bg-carvao/80 p-4">
@@ -164,7 +164,7 @@ export function TimerDisplay({
               </Button>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {formOpen ? (
