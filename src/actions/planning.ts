@@ -13,6 +13,7 @@ import {
   createSession,
   createSubject,
   createTopic,
+  createTimerSession,
   deleteActivity,
   deleteSession,
   deleteTopic,
