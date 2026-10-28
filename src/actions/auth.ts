@@ -22,7 +22,7 @@ import {
   usernameTaken,
 } from "@/lib/repo/profile";
 
-export type ActionState = { ok: boolean; error?: string; message?: string; data?: Record<string, unknown>; timerId?: string };
+export type ActionState = { ok: boolean; error?: string; message?: string; data?: Record<string, unknown> };
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 

@@ -32,29 +32,6 @@ export function TimerDisplay({
   const [minute, setMinute] = useState(0);
   const [second, setSecond] = useState(0);
 
-  // Restore timer state from localStorage on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("moriarty_timer_state");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setTimerId(parsed.timerId);
-        setStatus(parsed.status);
-        setAccumulatedSeconds(parsed.accumulatedSeconds);
-      } catch (e) {
-        // Invalid JSON, ignore
-      }
-    }
-  }, []);
-
-  // Persist timer state to localStorage on every change
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const state = { timerId, status, accumulatedSeconds };
-    localStorage.setItem("moriarty_timer_state", JSON.stringify(state));
-  }, [timerId, status, accumulatedSeconds]);
-
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -139,10 +116,6 @@ export function TimerDisplay({
       setStatus("completed");
       setIsRunning(false);
       setTimerId(null);
-      // Clear localStorage on finalization
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("moriarty_timer_state");
-      }
       setMessage(msg ?? "Sessão finalizada.");
       setFormOpen(false);
     } else {
