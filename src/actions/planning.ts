@@ -17,6 +17,7 @@ import {
   deleteSession,
   deleteTopic,
   deleteTimerSession,
+  getActiveGoal,
   getActivity,
   getSession,
   getSubject,
