@@ -8,20 +8,20 @@ import { nowIso } from "@/lib/db";
 import { todayStr, addDays, isValidDateStr, parseHHMM, weekStart } from "@/lib/dates";
 import {
   addUnavailableDate,
+  getActiveGoal,
+  removeUnavailableDate,
+  createTimerSession,
+  getTimerSession,
   createActivity,
   createGoal,
   createSession,
   createSubject,
   createTopic,
-  createTimerSession,
   deleteActivity,
   deleteSession,
   deleteTopic,
   deleteTimerSession,
-  getActiveGoal,
   getActivity,
-  getTimerSession,
-  removeUnavailableDate,
   getSession,
   getSubject,
   listActivities,
@@ -44,7 +44,7 @@ import { generateDailyReminders } from "@/lib/repo/notifications";
 import { planSchedule, validatePlannerInput, type PlannerInput } from "@/lib/planner";
 import { suggestSchedule } from "@/lib/ai";
 import { markOnboarded } from "@/lib/repo/profile";
-import type { ActionState } from "./auth";
+import { ActionState } from "./auth";
 export type { ActionState };
 
 const goalSchema = z.object({
@@ -333,44 +333,6 @@ export async function savePlanAction(_prev: ActionState, formData: FormData): Pr
   return { ok: true, message: `Plano salvo com ${parsed.data.sessions.length} sessão(ões).` };
 }
 
-const sessionSchema = z.object({
-  subjectId: z.string().optional().default(""),
-  date: z.string().refine(isValidDateStr, "Data inválida."),
-  start: z.string(),
-  plannedMinutes: z.coerce.number().int().min(15).max(480),
-  kind: z.enum(["estudo", "revisao", "simulado"]),
-  notes: z.string().max(1000).optional().default(""),
-});
-
-export async function createSessionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const user = await requireUser();
-  const parsed = sessionSchema.safeParse({
-    subjectId: String(formData.get("subjectId") ?? ""),
-    date: String(formData.get("date") ?? ""),
-    start: String(formData.get("start") ?? "19:00"),
-    plannedMinutes: formData.get("plannedMinutes"),
-    kind: String(formData.get("kind") ?? "estudo"),
-    notes: String(formData.get("notes") ?? ""),
-  });
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  const startMinute = parseHHMM(parsed.data.start);
-  if (startMinute === null) return { ok: false, error: "Horário de início inválido." };
-  const goal = await getActiveGoal(user.id);
-  await createSession(user.id, {
-    goalId: goal?.id ?? null,
-    subjectId: parsed.data.subjectId || null,
-    topicId: null,
-    date: parsed.data.date,
-    startMinute,
-    plannedMinutes: parsed.data.plannedMinutes,
-    kind: parsed.data.kind,
-    notes: parsed.data.notes,
-  });
-  revalidatePath("/plano");
-  revalidatePath("/central");
-  return { ok: true, message: "Sessão criada." };
-}
-
 export type CompleteSessionInput = {
   sessionId: string;
   status: "concluida" | "parcial" | "adiada" | "nao_realizada";
@@ -565,6 +527,7 @@ export async function completeTimerAction(_prev: ActionState, formData: FormData
   const actual = Math.max(0, Math.min(1440, Math.round(actualMinutes)));
   await updateTimerSession(user.id, timerId, {
     status,
+    actualMinutes: actual,
     notes,
     completed_at: nowIso(),
   });

@@ -1,0 +1,25 @@
+
+> moriarty@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.28
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 5.3s
+   Linting and checking validity of types ...
+Failed to compile.
+
+./src/actions/planning.ts:116:22
+Type error: Cannot find name 'getActiveGoal'.
+
+[0m [90m 114 |[39m   [36mif[39m ([33m![39mparsed[33m.[39msuccess) [36mreturn[39m { ok[33m:[39m [36mfalse[39m[33m,[39m error[33m:[39m parsed[33m.[39merror[33m.[39missues[[35m0[39m][33m?[39m[33m.[39mmessage [33m?[39m[33m?[39m [32m"Dados inválidos."[39m }[33m;[39m
+ [90m 115 |[39m   [36mconst[39m id [33m=[39m [33mString[39m(formData[33m.[39m[36mget[39m([32m"id"[39m) [33m?[39m[33m?[39m [32m""[39m)[33m;[39m
+[31m[1m>[22m[39m[90m 116 |[39m   [36mconst[39m goal [33m=[39m [36mawait[39m getActiveGoal(user[33m.[39mid)[33m;[39m
+ [90m     |[39m                      [31m[1m^[22m[39m
+ [90m 117 |[39m   [36mif[39m (id) {
+ [90m 118 |[39m     [36mif[39m ([33m![39m([36mawait[39m updateSubject(user[33m.[39mid[33m,[39m id[33m,[39m parsed[33m.[39mdata))) [36mreturn[39m { ok[33m:[39m [36mfalse[39m[33m,[39m error[33m:[39m [32m"Matéria não encontrada."[39m }[33m;[39m
+ [90m 119 |[39m   } [36melse[39m {[0m
+Next.js build worker exited with code: 1 and signal: null

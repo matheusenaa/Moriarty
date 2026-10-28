@@ -401,6 +401,7 @@ export async function updateTimerSession(
     resumed_at: string | null;
     last_pause_at: string | null;
     completed_at: string | null;
+    actualMinutes: number;
   }>,
 ): Promise<TimerSessionRow | null> {
   const current = await getTimerSession(userId, id);
