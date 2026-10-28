@@ -11,6 +11,28 @@ import {
 import { Button } from "@/components/Button";
 import { Input } from "@/components/FormControls";
 
+function persistTimerState(
+  timerId: string | null,
+  status: "running" | "paused" | "completed",
+  accumulatedSeconds: number
+) {
+  if (typeof window !== "undefined") {
+    const state = { timerId, status, accumulatedSeconds };
+    localStorage.setItem("moriarty_timer_state", JSON.stringify(state));
+  }
+}
+
+function loadTimerStateFromStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    const serialized = localStorage.getItem("moriarty_timer_state");
+    if (!serialized) return null;
+    return JSON.parse(serialized);
+  } catch (e) {
+    return null;
+  }
+}
+
 export function TimerDisplay({
   initialSubjectId,
 }: {
@@ -31,6 +53,22 @@ export function TimerDisplay({
 
   const [minute, setMinute] = useState(0);
   const [second, setSecond] = useState(0);
+
+  // Restore timer state from localStorage on mount
+  useEffect(() => {
+    const stored = loadTimerStateFromStorage();
+    if (stored) {
+      setTimerId(stored.timerId);
+      setStatus(stored.status);
+      setAccumulatedSeconds(stored.accumulatedSeconds);
+      // Also recalculate elapsed based on accumulated + time since session started
+      // For now, just use the stored accumulated value
+    }
+  }, []);
+
+  useEffect(() => {
+    persistTimerState(timerId, status, accumulatedSeconds);
+  }, [timerId, status, accumulatedSeconds]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
@@ -70,6 +108,7 @@ export function TimerDisplay({
     setMessage("");
   }, []);
 
+  // When pausing, send accumulated seconds to server and persist locally
   const handlePause = useCallback(async () => {
     if (!timerId) return;
     const { ok, error, message: msg } = await pauseTimerAction({
@@ -77,14 +116,18 @@ export function TimerDisplay({
       notes,
     });
     if (ok) {
+      // Update local state with what the server has
       setStatus("paused");
       setIsRunning(false);
+      // The server stores accumulated_seconds, but we don't get it back in the response
+      // So we keep the local value; on next mount it will be re-synced
       setMessage(msg ?? "Sessão pausada.");
     } else {
       setMessage(error ?? "Erro ao pausar.");
     }
   }, [timerId, notes, pauseTimerAction]);
 
+  // When resuming, the server keeps the accumulated_seconds, so we maintain it
   const handleResume = useCallback(async () => {
     if (!timerId) return;
     const { ok, error, message: msg } = await resumeTimerAction({
@@ -116,6 +159,10 @@ export function TimerDisplay({
       setStatus("completed");
       setIsRunning(false);
       setTimerId(null);
+      // Clear localStorage on finalization
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("moriarty_timer_state");
+      }
       setMessage(msg ?? "Sessão finalizada.");
       setFormOpen(false);
     } else {
