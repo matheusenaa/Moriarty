@@ -408,8 +408,8 @@ export async function updateTimerSession(
   if (!current) return null;
   await execute(
     `UPDATE study_timer_sessions SET status = $1, accumulated_seconds = $2, notes = $3,
-      resumed_at = $4, last_pause_at = $5, completed_at = $6, updated_at = $7
-     WHERE id = $8 AND user_id = $9`,
+      resumed_at = $4, last_pause_at = $5, completed_at = $6, actual_minutes = $7, updated_at = $8
+     WHERE id = $9 AND user_id = $10`,
     [
       data.status ?? current.status,
       data.accumulated_seconds ?? current.accumulated_seconds,
@@ -417,6 +417,7 @@ export async function updateTimerSession(
       data.resumed_at ?? current.resumed_at,
       data.last_pause_at ?? current.last_pause_at,
       data.completed_at ?? current.completed_at,
+      data.actualMinutes,
       nowIso(),
       id,
       userId,

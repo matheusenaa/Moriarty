@@ -27,7 +27,7 @@ export function TimerDisplay({
   const [actualMinutes, setActualMinutes] = useState(0);
   const [reviewTitles, setReviewTitles] = useState("");
   const [message, setMessage] = useState("");
-  const [pending, startTransition] = useState(false);
+  const [pending] = useState(false);
 
   const [minute, setMinute] = useState(0);
   const [second, setSecond] = useState(0);
