@@ -13,11 +13,15 @@ import {
   createSession,
   createSubject,
   createTopic,
+  createTimerSession,
   deleteActivity,
   deleteSession,
   deleteTopic,
   deleteTimerSession,
+  getActiveGoal,
   getActivity,
+  getTimerSession,
+  removeUnavailableDate,
   getSession,
   getSubject,
   listActivities,
@@ -561,7 +565,6 @@ export async function completeTimerAction(_prev: ActionState, formData: FormData
   const actual = Math.max(0, Math.min(1440, Math.round(actualMinutes)));
   await updateTimerSession(user.id, timerId, {
     status,
-    actualMinutes: actual,
     notes,
     completed_at: nowIso(),
   });
