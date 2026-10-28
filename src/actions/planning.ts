@@ -19,6 +19,7 @@ import {
   deleteTimerSession,
   getActiveGoal,
   getActivity,
+  removeUnavailableDate,
   getSession,
   getSubject,
   listActivities,
